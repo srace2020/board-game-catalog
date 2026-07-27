@@ -134,6 +134,64 @@
   }
   .btn-ghost:hover{border-color:var(--gold);color:var(--gold-soft);}
 
+  .sources-box{
+    background:var(--felt-deep);
+    border:1px solid #2c3c30;
+    border-radius:12px;
+    padding:18px 22px;
+    margin-top:20px;
+  }
+  .sources-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .sources-head .lbl{
+    font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    font-size:12px;
+    color:#a9bcae;
+  }
+  .sources-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .source-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    border-radius:999px;
+    padding:6px 8px 6px 14px;
+    font-size:13px;
+    color:var(--card);
+  }
+  .source-chip .src-count{color:#8fa896;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .source-chip .src-remove{
+    background:none;
+    border:none;
+    color:#8fa896;
+    cursor:pointer;
+    font-size:15px;
+    line-height:1;
+    padding:4px 6px;
+    border-radius:50%;
+  }
+  .source-chip .src-remove:hover{background:var(--brick);color:#fff;}
+
+  .owner-tag{
+    font-size:10.5px;
+    background:var(--green-tab);
+    color:#eef5ef;
+    padding:3px 8px;
+    border-radius:999px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+
   /* ---------- panel (filters) ---------- */
   .panel{
     background:var(--felt-deep);
@@ -401,21 +459,24 @@
 <header>
   <div class="eyebrow">Board Game Collection</div>
   <h1>Collection Catalog</h1>
-  <p class="tagline">Upload a BoardGameGeek collection export and sort your shelf by weight, player count, rating, and theme.</p>
+  <p class="tagline">Upload one or more BoardGameGeek collection exports and sort your shared shelf by weight, player count, rating, theme, and owner.</p>
 </header>
 
 <div class="wrap">
 
   <div id="dropzone" class="dropzone">
-    <input type="file" id="fileInput" accept=".csv">
+    <input type="file" id="fileInput" accept=".csv" multiple>
     <div class="dz-icon">🗂️</div>
-    <div class="dz-title">Drop your BGG collection CSV here, or click to browse</div>
-    <div class="dz-sub">Export it from <code>boardgamegeek.com/collection/user/YOURNAME</code> → Export → CSV</div>
+    <div class="dz-title" id="dzTitle">Drop a BGG collection CSV here, or click to browse</div>
+    <div class="dz-sub">Export it from <code>boardgamegeek.com/collection/user/YOURNAME</code> → Export → CSV. Add one file per person to build a shared group library.</div>
   </div>
 
-  <div id="fileLoaded" class="file-loaded" style="display:none;">
-    <span>Loaded: <span class="fname" id="fname"></span> — <span id="gameCount"></span> games</span>
-    <button class="btn-ghost" id="clearBtn">Load a different file</button>
+  <div id="sourcesBox" class="sources-box" style="display:none;">
+    <div class="sources-head">
+      <span class="lbl">Collections loaded</span>
+      <button class="btn-ghost" id="clearAllBtn">Clear all</button>
+    </div>
+    <div id="sourcesList" class="sources-list"></div>
   </div>
 
   <div class="panel" id="panel">
@@ -482,6 +543,17 @@
         <p class="theme-empty">Category/theme data isn't included in BGG's CSV export. Click "Fetch themes from BGG" to look up each game's official categories via BGG's API (routed through a free public CORS proxy, since BGG's API blocks direct browser requests) — may take a moment for large collections.</p>
       </div>
     </div>
+
+    <div class="theme-box" id="ownerBox" style="display:none;">
+      <div class="theme-head">
+        <span class="lbl">Owned by</span>
+      </div>
+      <div id="ownerArea" class="theme-chips"></div>
+      <div class="checkbox-row" style="margin-top:14px;">
+        <input type="checkbox" id="onlySharedGames">
+        <label for="onlySharedGames">Only show games owned by more than one person (potential duplicates)</label>
+      </div>
+    </div>
   </div>
 
   <div class="results-bar" id="resultsBar" style="display:none;">
@@ -511,17 +583,18 @@
 
 <script>
 (function(){
-  let games = [];        // normalized game objects
+  let sources = [];      // [{ id, ownerName, rawGames: [...] }] one entry per uploaded file
+  let games = [];        // merged view across all sources, each with an `owners` array
   let themesLoaded = false;
   let activeThemes = new Set();
   let allThemes = [];
+  let activeOwners = new Set();
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
-  const fileLoaded = document.getElementById('fileLoaded');
-  const fnameEl = document.getElementById('fname');
-  const gameCountEl = document.getElementById('gameCount');
-  const clearBtn = document.getElementById('clearBtn');
+  const sourcesBox = document.getElementById('sourcesBox');
+  const sourcesList = document.getElementById('sourcesList');
+  const clearAllBtn = document.getElementById('clearAllBtn');
   const panel = document.getElementById('panel');
   const resultsBar = document.getElementById('resultsBar');
   const grid = document.getElementById('grid');
@@ -544,27 +617,33 @@
   const enrichBtn = document.getElementById('enrichBtn');
   const themeStatus = document.getElementById('themeStatus');
   const themeArea = document.getElementById('themeArea');
+  const ownerBox = document.getElementById('ownerBox');
+  const ownerArea = document.getElementById('ownerArea');
+  const onlySharedGames = document.getElementById('onlySharedGames');
 
-  // ---------- file handling ----------
+  // ---------- file handling (multiple sources / people) ----------
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
   dropzone.addEventListener('drop', e => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    handleFiles(e.dataTransfer.files);
   });
   fileInput.addEventListener('change', e => {
-    if (e.target.files.length) handleFile(e.target.files[0]);
+    handleFiles(e.target.files);
+    fileInput.value = ''; // allow re-selecting the same file later
   });
-  clearBtn.addEventListener('click', () => {
+  clearAllBtn.addEventListener('click', () => {
+    sources = [];
     games = [];
     themesLoaded = false;
     activeThemes = new Set();
-    fileInput.value = '';
-    fileLoaded.style.display = 'none';
-    dropzone.style.display = 'block';
+    activeOwners = new Set();
+    sourcesBox.style.display = 'none';
+    sourcesList.innerHTML = '';
     panel.classList.remove('show');
+    ownerBox.style.display = 'none';
     resultsBar.style.display = 'none';
     downloadRow.style.display = 'none';
     grid.innerHTML = '';
@@ -572,27 +651,100 @@
     themeStatus.textContent = '';
   });
 
-  function handleFile(file){
-    fnameEl.textContent = file.name;
-    Papa.parse(file, {
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: function(results){
-        normalize(results.data, results.meta.fields);
-        fileLoaded.style.display = 'flex';
-        dropzone.style.display = 'none';
-        gameCountEl.textContent = games.length;
-        panel.classList.add('show');
-        resultsBar.style.display = 'flex';
-        buildPlayerOptions();
-        setDefaultRanges();
-        render();
-      },
-      error: function(err){
-        alert('Could not parse that CSV: ' + err.message);
-      }
+  function handleFiles(fileList){
+    Array.from(fileList).forEach(file => {
+      if (!file.name.toLowerCase().endsWith('.csv')) return;
+      let ownerName = window.prompt(
+        `Whose collection is "${file.name}"? (shown as an owner tag — e.g. a first name)`,
+        file.name.replace(/\.csv$/i, '')
+      );
+      if (!ownerName || !ownerName.trim()) ownerName = file.name.replace(/\.csv$/i, '');
+      ownerName = ownerName.trim();
+
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: function(results){
+          const rawGames = normalize(results.data, results.meta.fields);
+          sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName, rawGames });
+          onSourcesChanged();
+        },
+        error: function(err){
+          alert(`Could not parse "${file.name}": ` + err.message);
+        }
+      });
     });
+  }
+
+  function onSourcesChanged(){
+    mergeSources();
+    renderSourcesList();
+    dropzone.querySelector('.dz-title').textContent = 'Drop another person\'s CSV here, or click to add one';
+    sourcesBox.style.display = sources.length ? 'block' : 'none';
+    panel.classList.toggle('show', games.length > 0);
+    ownerBox.style.display = sources.length > 1 ? 'block' : 'none';
+    resultsBar.style.display = games.length ? 'flex' : 'none';
+    if (sources.length > 1) renderOwnerChips();
+    buildPlayerOptions();
+    setDefaultRanges();
+    render();
+  }
+
+  function renderSourcesList(){
+    sourcesList.innerHTML = '';
+    sources.forEach(src => {
+      const chip = document.createElement('div');
+      chip.className = 'source-chip';
+      chip.innerHTML = `<span>${escapeHtml(src.ownerName)}</span><span class="src-count">${src.rawGames.length} games</span>`;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'src-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = `Remove ${src.ownerName}'s collection`;
+      removeBtn.addEventListener('click', () => {
+        sources = sources.filter(s => s.id !== src.id);
+        activeOwners.delete(src.ownerName);
+        onSourcesChanged();
+      });
+      chip.appendChild(removeBtn);
+      sourcesList.appendChild(chip);
+    });
+  }
+
+  function renderOwnerChips(){
+    const owners = sources.map(s => s.ownerName);
+    ownerArea.innerHTML = '';
+    owners.forEach(owner => {
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (activeOwners.has(owner) ? ' active' : '');
+      chip.textContent = owner;
+      chip.addEventListener('click', () => {
+        if (activeOwners.has(owner)) activeOwners.delete(owner);
+        else activeOwners.add(owner);
+        chip.classList.toggle('active');
+        render();
+      });
+      ownerArea.appendChild(chip);
+    });
+  }
+
+  // merge every source's games into one library, tracking who owns each copy.
+  // games are matched by BGG objectid (or name, if no id) so the same game
+  // owned by two people becomes one entry tagged with both owners.
+  function mergeSources(){
+    const merged = new Map(); // key -> game record
+    sources.forEach(src => {
+      src.rawGames.forEach(g => {
+        const key = String(g.id);
+        if (!merged.has(key)){
+          merged.set(key, { ...g, owners: [src.ownerName], themes: g.themes || null });
+        } else {
+          const existing = merged.get(key);
+          if (!existing.owners.includes(src.ownerName)) existing.owners.push(src.ownerName);
+        }
+      });
+    });
+    games = Array.from(merged.values());
   }
 
   function findField(fields, candidates){
@@ -604,6 +756,7 @@
     return null;
   }
 
+  // returns a normalized array of games for ONE file — does not touch global state
   function normalize(rows, fields){
     const fName = findField(fields, ['objectname','name']) || fields[0];
     const fId = findField(fields, ['objectid','id']);
@@ -615,7 +768,7 @@
     const fYear = findField(fields, ['yearpublished','year']);
 
     const seen = new Set();
-    games = [];
+    const out = [];
     rows.forEach(r => {
       const name = fName ? r[fName] : null;
       if (!name) return;
@@ -624,7 +777,7 @@
       if (seen.has(dedupeKey)) return; // drop true duplicate rows (same game logged twice)
       seen.add(dedupeKey);
 
-      games.push({
+      out.push({
         name: String(name),
         id: id,
         min: fMin && r[fMin] != null ? Number(r[fMin]) : null,
@@ -636,6 +789,7 @@
         themes: null // filled in on enrichment
       });
     });
+    return out;
   }
 
   function buildPlayerOptions(){
@@ -661,8 +815,16 @@
     ratingMin.value = 0;
   }
 
+  onlySharedGames.addEventListener('change', render);
+
+
   // ---------- theme enrichment (optional, hits BGG's live API) ----------
   enrichBtn.addEventListener('click', enrichThemes);
+
+  // Paste your deployed Cloudflare Worker URL here once you have one, e.g.:
+  // const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
+  // Leave blank to fall back to shared public CORS proxies (slower, less reliable).
+  const BGG_WORKER_URL = '';
 
   const CORS_PROXIES = [
     url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -681,28 +843,64 @@
     }
   }
 
-  async function fetchViaProxies(targetUrl){
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // if a personal Worker URL is configured, use it directly — it's not shared
+  // with anyone else, so no rotation/backoff dance is needed, just a retry.
+  async function fetchViaWorker(ids){
+    const url = `${BGG_WORKER_URL}?ids=${ids.join(',')}`;
+    const res = await fetchWithTimeout(url, 8000);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (!text.includes('<item')) throw new Error('unexpected response');
+    return text;
+  }
+
+  // rotate which proxy goes first per batch, so load spreads out instead of
+  // every batch hammering the same proxy first and tripping its rate limit
+  async function fetchViaProxies(targetUrl, startIndex){
     let lastErr = null;
-    for (const buildProxyUrl of CORS_PROXIES){
+    for (let k = 0; k < CORS_PROXIES.length; k++){
+      const buildProxyUrl = CORS_PROXIES[(startIndex + k) % CORS_PROXIES.length];
       try {
-        const res = await fetchWithTimeout(buildProxyUrl(targetUrl), 6000); // give up on a slow proxy after 6s
+        const res = await fetchWithTimeout(buildProxyUrl(targetUrl), 7000);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
         if (!text.includes('<item')) throw new Error('unexpected response');
         return text;
       } catch (e){
         lastErr = e;
-        continue; // try the next proxy immediately, no waiting
+        continue;
       }
     }
     throw lastErr || new Error('all proxies failed');
   }
 
-  // run async tasks with a concurrency cap instead of one-at-a-time
+  async function fetchBatchWithRetry(batch, batchIndex){
+    const usingWorker = !!BGG_WORKER_URL;
+    const attempts = usingWorker ? 2 : 2;
+    for (let attempt = 0; attempt < attempts; attempt++){
+      try {
+        if (usingWorker){
+          return await fetchViaWorker(batch);
+        } else {
+          const targetUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`;
+          return await fetchViaProxies(targetUrl, batchIndex + attempt);
+        }
+      } catch (e){
+        if (attempt === 0) await sleep(usingWorker ? 500 : 1200 + Math.random() * 800);
+      }
+    }
+    return null; // both attempts failed
+  }
+
+  // run async tasks with a concurrency cap, staggering starts so we don't
+  // slam every proxy with a burst of simultaneous requests
   async function runPool(items, concurrency, worker){
     let idx = 0;
     let completed = 0;
-    async function runNext(){
+    async function runNext(slot){
+      await sleep(slot * 250); // stagger this worker's first request
       while (idx < items.length){
         const i = idx++;
         await worker(items[i], i);
@@ -710,7 +908,8 @@
         themeStatus.textContent = `Fetching batch ${completed}/${items.length}...`;
       }
     }
-    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, runNext));
+    const slots = Math.min(concurrency, items.length);
+    await Promise.all(Array.from({ length: slots }, (_, slot) => runNext(slot)));
   }
 
   async function enrichThemes(){
@@ -723,33 +922,35 @@
 
     let failedBatches = 0;
     const themeSet = new Set();
+    const concurrency = BGG_WORKER_URL ? 6 : 3; // your own Worker can handle more parallel load
 
-    await runPool(batches, 5, async (batch) => { // up to 5 batches in flight at once
-      try {
-        const targetUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`;
-        const text = await fetchViaProxies(targetUrl);
-        const xml = new DOMParser().parseFromString(text, 'text/xml');
-        const items = xml.querySelectorAll('item');
-        items.forEach(item => {
-          const id = item.getAttribute('id');
-          const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
-            .map(l => l.getAttribute('value'));
-          const g = games.find(gm => String(gm.id) === String(id));
-          if (g){
-            g.themes = cats;
-            cats.forEach(c => themeSet.add(c));
-          }
-        });
-      } catch (e){
+    await runPool(batches, concurrency, async (batch, batchIndex) => {
+      const text = await fetchBatchWithRetry(batch, batchIndex);
+      if (!text){
         failedBatches++;
+        return;
       }
+      const xml = new DOMParser().parseFromString(text, 'text/xml');
+      const items = xml.querySelectorAll('item');
+      items.forEach(item => {
+        const id = item.getAttribute('id');
+        const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
+          .map(l => l.getAttribute('value'));
+        const g = games.find(gm => String(gm.id) === String(id));
+        if (g){
+          g.themes = cats;
+          cats.forEach(c => themeSet.add(c));
+        }
+      });
     });
 
     enrichBtn.disabled = false;
 
     if (themeSet.size === 0){
       themeStatus.textContent = '';
-      themeArea.innerHTML = '<p class="theme-empty">Couldn\'t fetch theme data from any of the three CORS proxies tried — they may all be rate-limited or down right now. Try again in a few minutes. Weight, player count, rating, and name filters all still work fine either way.</p>';
+      themeArea.innerHTML = BGG_WORKER_URL
+        ? '<p class="theme-empty">Couldn\'t fetch theme data from your Worker. Double-check the Worker URL in the code and that it\'s deployed with a valid BGG token. Weight, player count, rating, and name filters all still work fine either way.</p>'
+        : '<p class="theme-empty">Couldn\'t fetch theme data — all three CORS proxies are rate-limited or down right now. This is a limitation of relying on free public proxies rather than a backend of your own. Try again in a few minutes. Weight, player count, rating, and name filters all still work fine either way.</p>';
       return;
     }
 
@@ -828,6 +1029,10 @@
       if (activeThemes.size > 0){
         if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
       }
+      if (activeOwners.size > 0){
+        if (!g.owners.some(o => activeOwners.has(o))) return false;
+      }
+      if (onlySharedGames.checked && g.owners.length < 2) return false;
       return true;
     });
 
@@ -867,6 +1072,9 @@
       const themesHtml = (g.themes && g.themes.length)
         ? `<div class="gthemes">${g.themes.slice(0,4).map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
         : '';
+      const ownersHtml = (sources.length > 1 && g.owners && g.owners.length)
+        ? `<div class="gthemes">${g.owners.map(o => `<span class="owner-tag">${escapeHtml(o)}</span>`).join('')}</div>`
+        : '';
       card.innerHTML = `
         <div class="gname">${escapeHtml(g.name)}</div>
         <div class="grow">
@@ -874,6 +1082,7 @@
           <span><b>${weight}</b> wt</span>
           <span><b>${rating}</b> ★</span>
         </div>
+        ${ownersHtml}
         ${themesHtml}
       `;
       grid.appendChild(card);
@@ -887,13 +1096,14 @@
   // ---------- download filtered CSV ----------
   downloadBtn.addEventListener('click', () => {
     const filtered = getFiltered();
-    const header = ['name','minplayers','maxplayers','weight','rating','themes'];
+    const header = ['name','minplayers','maxplayers','weight','rating','owners','themes'];
     const rows = filtered.map(g => [
       g.name,
       g.min ?? '',
       g.max ?? '',
       g.weight ?? '',
       g.rating ?? '',
+      g.owners ? g.owners.join('; ') : '',
       g.themes ? g.themes.join('; ') : ''
     ]);
     const csv = [header, ...rows].map(r =>
