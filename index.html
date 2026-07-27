@@ -508,7 +508,7 @@
 <div class="wrap">
 
   <div id="workerWarning" class="worker-warning" style="display:none;">
-    <strong>Setup needed:</strong> this version reads directly from BGG's API, which requires a Cloudflare Worker URL to be configured in the code (<code>BGG_WORKER_URL</code>). Add that first — see the app's build notes — before usernames can be loaded.
+    <strong>Setup needed:</strong> this version reads directly from BGG's API, which requires a Cloudflare Worker  to be configured in the code (<code>BGG_WORKER_</code>). Add that first — see the app's build notes — before usernames can be loaded.
   </div>
 
   <div id="usernameBox" class="dropzone" style="cursor:default;">
@@ -637,7 +637,7 @@
   // Paste your deployed Cloudflare Worker URL here once you have one, e.g.:
   // const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
   // Leave blank to fall back to shared public CORS proxies (slower, less reliable, thing-lookups only — no username support).
-  const BGG_WORKER_URL = '';
+  const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
 
   let sources = [];      // [{ id, ownerName, username, rawGames: [...] }] one entry per loaded BGG account
   let games = [];        // merged view across all sources, each with an `owners` array
