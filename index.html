@@ -1,1055 +1,870 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tales of the Weird — Collection Checklist</title>
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collection Catalog — BGG Filter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --felt:#152219;
+    --felt-deep:#0d1610;
+    --card:#f1e7d0;
+    --card-shadow:#00000055;
+    --ink:#241d13;
+    --ink-soft:#6b5f47;
+    --brick:#a83c32;
+    --brick-dark:#7c2c25;
+    --gold:#c69a2f;
+    --gold-soft:#e0be6a;
+    --line:#d9cba3;
+    --green-tab:#3c6b4a;
+    --focus:#e0be6a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, #1c2e21 0%, var(--felt) 45%, var(--felt-deep) 100%);
+    background-attachment:fixed;
+    color:var(--card);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:0 0 80px 0;
+  }
+  a{color:inherit;}
 
-    :root {
-      --black: #0a0a0a;
-      --white: #f0f0f0;
-      --teal: #1ec8b0;
-      --red: #e8263a;
-      --yellow: #f5d800;
-      --owned-bg: #0f2820;
-      --owned-border: #1ec8b0;
-    }
+  /* ---------- header ---------- */
+  header{
+    padding:56px 24px 28px;
+    text-align:center;
+    position:relative;
+  }
+  header::after{
+    content:"";
+    display:block;
+    width:120px;
+    height:3px;
+    background:var(--gold);
+    margin:20px auto 0;
+    border-radius:2px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    letter-spacing:.25em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--gold-soft);
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Special Elite', monospace;
+    font-weight:400;
+    font-size:clamp(32px,5vw,52px);
+    margin:0;
+    color:var(--card);
+    letter-spacing:.5px;
+  }
+  .tagline{
+    font-size:15px;
+    color:#c9d6c9;
+    margin-top:12px;
+    max-width:520px;
+    margin-left:auto;
+    margin-right:auto;
+    line-height:1.5;
+  }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ---------- layout ---------- */
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 24px;
+  }
 
-    body {
-      background: var(--black);
-      min-height: 100vh;
-      font-family: 'Space Mono', monospace;
-      color: var(--white);
-      padding: 0 0 80px;
-    }
+  /* ---------- upload dropzone ---------- */
+  .dropzone{
+    border:2px dashed #4f6b57;
+    border-radius:10px;
+    padding:40px 24px;
+    text-align:center;
+    background:#ffffff08;
+    transition:border-color .2s, background .2s;
+    cursor:pointer;
+  }
+  .dropzone.dragover{
+    border-color:var(--gold);
+    background:#ffffff12;
+  }
+  .dropzone input{display:none;}
+  .dz-icon{font-size:34px;margin-bottom:10px;}
+  .dz-title{font-weight:600;font-size:16px;color:var(--card);}
+  .dz-sub{font-size:13px;color:#a9bcae;margin-top:6px;}
+  .dz-sub code{
+    background:#00000030;
+    padding:1px 6px;
+    border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
 
-    /* HEADER */
-    header {
-      text-align: center;
-      padding: 56px 20px 40px;
-      border-bottom: 3px solid var(--teal);
-      position: relative;
-    }
-    .series-label {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.4em;
-      color: var(--teal);
-      text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-    h1 {
-      font-family: 'Black Ops One', sans-serif;
-      font-size: clamp(2rem, 7vw, 4rem);
-      color: var(--white);
-      line-height: 1;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-    }
-    h1 span { color: var(--teal); }
-    .subtitle {
-      font-size: 0.72rem;
-      color: #797979;
-      margin-top: 12px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-    }
+  .file-loaded{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    background:#ffffff0d;
+    border:1px solid #3d5443;
+    border-radius:10px;
+    padding:14px 20px;
+    font-size:14px;
+    flex-wrap:wrap;
+  }
+  .file-loaded .fname{font-family:'IBM Plex Mono',monospace;color:var(--gold-soft);}
+  .btn-ghost{
+    background:none;
+    border:1px solid #5a7562;
+    color:#dfe9e0;
+    padding:7px 14px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold-soft);}
 
-    /* STATS */
-    .stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: 0;
-      border-bottom: 3px solid #1a1a1a;
-      flex-wrap: wrap;
-    }
-    .stat {
-      text-align: center;
-      padding: 20px 40px;
-      border-right: 1px solid #1a1a1a;
-    }
-    .stat:last-child { border-right: none; }
-    .stat-number {
-      font-family: 'Black Ops One', sans-serif;
-      font-size: 2.2rem;
-      color: var(--yellow);
-      display: block;
-      line-height: 1;
-    }
-    .stat-label {
-      font-size: 0.6rem;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: #797979;
-      margin-top: 4px;
-      display: block;
-    }
+  /* ---------- panel (filters) ---------- */
+  .panel{
+    background:var(--felt-deep);
+    border:1px solid #2c3c30;
+    border-radius:12px;
+    margin-top:28px;
+    padding:24px 26px 20px;
+    display:none;
+  }
+  .panel.show{display:block;}
+  .panel-title{
+    font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;
+    letter-spacing:.15em;
+    font-size:12px;
+    color:var(--gold-soft);
+    margin:0 0 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:#31432f;
+  }
+  .filters-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:20px 24px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:#a9bcae;
+    margin-bottom:8px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .field select, .field input[type=text], .field input[type=number]{
+    width:100%;
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:var(--card);
+    padding:9px 10px;
+    border-radius:6px;
+    font-size:14px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .field select:focus, .field input:focus{
+    outline:2px solid var(--focus);
+    outline-offset:1px;
+  }
+  .range-row{display:flex;align-items:center;gap:8px;}
+  .range-row input{width:100%;}
+  .range-row span{color:#7f9587;font-size:13px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--brick);}
+  .checkbox-row label{font-size:13px;color:#cddace;margin:0;text-transform:none;letter-spacing:0;font-family:'IBM Plex Sans',sans-serif;}
 
-    /* PROGRESS */
-    .progress-wrap {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 16px 20px 0;
-    }
-    .progress-bar-outer {
-      height: 8px;
-      background: #1a1a1a;
-      overflow: hidden;
-    }
-    .progress-bar-inner {
-      height: 100%;
-      background: var(--teal);
-      transition: width 0.4s ease;
-    }
-    .progress-pct {
-      font-size: 0.6rem;
-      color: #797979;
-      letter-spacing: 0.2em;
-      text-align: right;
-      display: block;
-      margin-top: 5px;
-      text-transform: uppercase;
-    }
+  .toggle-btn{
+    flex:1;
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:#a9bcae;
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .toggle-btn.active{
+    background:var(--brick);
+    border-color:var(--brick);
+    color:#fff5ec;
+  }
+  .toggle-btn:hover:not(.active){border-color:var(--gold);}
 
-    /* CONTROLS */
-    .controls {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      padding: 20px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      padding: 8px 18px;
-      border: 1px solid #333;
-      background: transparent;
-      color: #797979;
-      transition: all 0.15s;
-    }
-    .btn:hover { border-color: var(--teal); color: var(--teal); }
+  .theme-box{
+    margin-top:20px;
+    border-top:1px dashed #31432f;
+    padding-top:18px;
+  }
+  .theme-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .theme-head .lbl{
+    font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:12px;
+    color:#a9bcae;
+  }
+  .btn-enrich{
+    background:var(--green-tab);
+    border:none;
+    color:#eef5ef;
+    padding:8px 16px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:600;
+  }
+  .btn-enrich:hover{background:#4d7f5c;}
+  .btn-enrich:disabled{opacity:.5;cursor:not-allowed;}
+  .theme-status{font-size:12px;color:#8fa896;font-family:'IBM Plex Mono',monospace;}
+  .theme-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    font-size:12.5px;
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid #46614d;
+    background:#0e1712;
+    color:#cddace;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    user-select:none;
+  }
+  .chip.active{
+    background:var(--brick);
+    border-color:var(--brick);
+    color:#fff5ec;
+  }
+  .theme-empty{font-size:13px;color:#7f9587;font-style:italic;}
 
-    /* YEAR SECTIONS */
-    .year-section {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-    .year-heading {
-      font-family: 'Black Ops One', sans-serif;
-      font-size: 1.4rem;
-      color: var(--black);
-      background: var(--teal);
-      display: inline-block;
-      padding: 4px 16px;
-      margin: 40px 0 12px;
-      letter-spacing: 0.05em;
-    }
-    .year-heading.forthcoming {
-      background: var(--yellow);
-      color: var(--black);
-    }
+  /* ---------- results header ---------- */
+  .results-bar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:30px 0 16px;
+  }
+  .results-count{
+    font-family:'Special Elite',monospace;
+    font-size:20px;
+    color:var(--card);
+  }
+  .results-count b{color:var(--gold-soft);}
+  .results-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .results-tools select{
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:var(--card);
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:13px;
+  }
 
-    /* BOOK LIST */
-    .book-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  /* ---------- card grid (catalog cards) ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:16px;
+  }
+  .gcard{
+    background:var(--card);
+    color:var(--ink);
+    border-radius:4px 4px 8px 8px;
+    box-shadow:0 6px 14px var(--card-shadow);
+    padding:16px 16px 14px;
+    position:relative;
+    border-top:8px solid var(--brick);
+    display:flex;
+    flex-direction:column;
+    min-height:150px;
+  }
+  .gcard::before{
+    content:"";
+    position:absolute;
+    top:-6px; left:20px;
+    width:14px;height:14px;
+    background:var(--gold);
+    border-radius:50%;
+    box-shadow:0 1px 2px #0004;
+  }
+  .gcard .gname{
+    font-family:'Special Elite',monospace;
+    font-size:16.5px;
+    line-height:1.25;
+    margin:6px 0 10px;
+  }
+  .gcard .grow{
+    display:flex;
+    gap:14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .gcard .grow b{color:var(--ink);}
+  .gcard .gthemes{
+    margin-top:auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    padding-top:8px;
+  }
+  .gtag{
+    font-size:10.5px;
+    background:#00000012;
+    padding:3px 8px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Sans',sans-serif;
+  }
 
-    .book-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 14px;
-      border: 1px solid #1a1a1a;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .book-item:hover { border-color: #333; background: #111; }
-    .book-item.owned { background: #0f2820; border-color: #1ec8b0; }
-    .book-item.owned .book-num { color: #1ec8b0; }
+  .no-results{
+    text-align:center;
+    padding:60px 20px;
+    color:#8fa896;
+    font-size:14px;
+  }
 
-    /* CHECKBOX */
+  /* ---------- download ---------- */
+  .download-row{
+    text-align:center;
+    margin-top:28px;
+  }
+  .btn-download{
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--gold-soft);
+    padding:10px 22px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:.05em;
+  }
+  .btn-download:hover{background:var(--gold);color:#241d13;}
 
-    /* BOOK INFO */
-    .book-num {
-      font-family: 'Black Ops One', sans-serif;
-      font-size: 0.7rem;
-      color: #797979;
-      min-width: 24px;
-      flex-shrink: 0;
-    }
-    .book-info { flex: 1; min-width: 0; position: relative; padding-bottom: 20px; }
-    .book-title {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.82rem;
-      color: var(--white);
-      line-height: 1.4;
-      transition: color 0.15s;
-    }
-    .book-editor {
-      font-size: 0.7rem;
-      color: #797979;
-      margin-top: 3px;
-      transition: color 0.15s;
-    }
-    .amz-link {
-      display: inline-block;
-      margin-top: 6px;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.55rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #5d5d5d;
-      border: 1px solid #5d5d5d;
-      padding: 2px 8px;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-    .amz-link:hover { color: var(--yellow); border-color: var(--yellow); }
-    .badge {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.55rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--yellow);
-      border: 1px solid var(--yellow);
-      padding: 1px 6px;
-      margin-left: 8px;
-      vertical-align: middle;
-    }
-    .book-status {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.55rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      color: #444;
-    }
-    .book-status .status-icon {
-      font-size: 0.7rem;
-      line-height: 1;
-    }
-    .book-item.owned .book-status {
-      color: var(--teal);
-    }
-    .book-item:not(.owned) .book-status {
-      color: #444;
-    }
-    .ornament {
-      color: var(--teal);
-      opacity: 0.3;
-      font-size: 1rem;
-      margin: 30px 0 0;
-      letter-spacing: 0.5em;
-      text-align: center;
-    }
-    footer {
-      text-align: center;
-      padding: 50px 20px 0;
-      font-size: 0.55rem;
-      letter-spacing: 0.3em;
-      color: #797979;
-      text-transform: uppercase;
-      font-family: 'Space Mono', monospace;
-    }
-  </style>
+  @media (prefers-reduced-motion:no-preference){
+    .gcard{transition:transform .15s ease;}
+    .gcard:hover{transform:translateY(-3px);}
+    .chip{transition:background .15s,border-color .15s;}
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:#628068;
+    margin-top:60px;
+    padding-top:20px;
+    border-top:1px solid #24332580;
+  }
+</style>
 </head>
 <body>
 
 <header>
-  <p class="series-label">British Library</p>
-  <h1>Tales of the <span>Weird</span></h1>
-  <p class="subtitle">Collection Checklist · 2018 – Present</p>
+  <div class="eyebrow">Board Game Collection</div>
+  <h1>Collection Catalog</h1>
+  <p class="tagline">Upload a BoardGameGeek collection export and sort your shelf by weight, player count, rating, and theme.</p>
 </header>
 
-<div class="stats-bar">
-  <div class="stat"><span class="stat-number" id="total-count">72</span><span class="stat-label">Total</span></div>
-  <div class="stat"><span class="stat-number" id="owned-count">0</span><span class="stat-label">Owned</span></div>
-  <div class="stat"><span class="stat-number" id="unread-count">72</span><span class="stat-label">Wanted</span></div>
-</div>
-<div class="progress-wrap">
-  <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%"></div></div>
-  <span class="progress-pct" id="progress-pct">0% collected</span>
-</div>
+<div class="wrap">
 
-<div class="year-section">
+  <div id="dropzone" class="dropzone">
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="dz-icon">🗂️</div>
+    <div class="dz-title">Drop your BGG collection CSV here, or click to browse</div>
+    <div class="dz-sub">Export it from <code>boardgamegeek.com/collection/user/YOURNAME</code> → Export → CSV</div>
+  </div>
 
-  <!-- 2018 -->
-  <h2 class="year-heading">2018</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">1</span>
-      <div class="book-info">
-        <div class="book-title">From the Depths and Other Strange Tales of the Sea</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=From+the+Depths+and+Other+Strange+Tales+of+the+Sea+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">2</span>
-      <div class="book-info">
-        <div class="book-title">Haunted Houses: Two Novels by Charlotte Riddell <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Andrew Smith</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Haunted+Houses%3A+Two+Novels+by+Charlotte+Riddell+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">3</span>
-      <div class="book-info">
-        <div class="book-title">Glimpses of the Unknown: Lost Ghost Stories</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Glimpses+of+the+Unknown%3A+Lost+Ghost+Stories+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">4</span>
-      <div class="book-info">
-        <div class="book-title">Mortal Echoes: Encounters with the End</div>
-        <div class="book-editor">ed. Greg Buzwell</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Mortal+Echoes%3A+Encounters+with+the+End+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">5</span>
-      <div class="book-info">
-        <div class="book-title">Spirits of the Season: Christmas Hauntings</div>
-        <div class="book-editor">ed. Tanya Kirk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Spirits+of+the+Season%3A+Christmas+Hauntings+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
+  <div id="fileLoaded" class="file-loaded" style="display:none;">
+    <span>Loaded: <span class="fname" id="fname"></span> — <span id="gameCount"></span> games</span>
+    <button class="btn-ghost" id="clearBtn">Load a different file</button>
+  </div>
 
-  <!-- 2019 -->
-  <h2 class="year-heading">2019</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">6</span>
-      <div class="book-info">
-        <div class="book-title">The Platform Edge: Uncanny Tales of the Railways</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Platform+Edge%3A+Uncanny+Tales+of+the+Railways+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">7</span>
-      <div class="book-info">
-        <div class="book-title">The Face in the Glass: The Gothic Tales of Mary Elizabeth Braddon <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Greg Buzwell</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Face+in+the+Glass%3A+The+Gothic+Tales+of+Mary+Elizabeth+Braddon+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">8</span>
-      <div class="book-info">
-        <div class="book-title">The Weird Tales of William Hope Hodgson</div>
-        <div class="book-editor">ed. Xavier Aldana Reyes</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Weird+Tales+of+William+Hope+Hodgson+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">9</span>
-      <div class="book-info">
-        <div class="book-title">Doorway to Dilemma: Bewildering Tales of Dark Fantasy</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Doorway+to+Dilemma%3A+Bewildering+Tales+of+Dark+Fantasy+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">10</span>
-      <div class="book-info">
-        <div class="book-title">Evil Roots: Killer Tales of the Botanical Gothic</div>
-        <div class="book-editor">ed. Daisy Butcher</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Evil+Roots%3A+Killer+Tales+of+the+Botanical+Gothic+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">11</span>
-      <div class="book-info">
-        <div class="book-title">Promethean Horrors: Classic Tales of Mad Science</div>
-        <div class="book-editor">ed. Xavier Aldana Reyes</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Promethean+Horrors%3A+Classic+Tales+of+Mad+Science+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">12</span>
-      <div class="book-info">
-        <div class="book-title">Roarings from Further Out: Four Weird Novellas by Algernon Blackwood</div>
-        <div class="book-editor">ed. Xavier Aldana Reyes</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Roarings+from+Further+Out%3A+Four+Weird+Novellas+by+Algernon+Blackwood+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">13</span>
-      <div class="book-info">
-        <div class="book-title">Tales of the Tattooed: An Anthology of Ink</div>
-        <div class="book-editor">ed. John Miller</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Tales+of+the+Tattooed%3A+An+Anthology+of+Ink+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
+  <div class="panel" id="panel">
+    <p class="panel-title">Filters</p>
+    <div class="filters-grid">
 
-  <!-- 2020 -->
-  <h2 class="year-heading">2020</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">14</span>
-      <div class="book-info">
-        <div class="book-title">The Outcast: and Other Dark Tales by E F Benson <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Outcast%3A+and+Other+Dark+Tales+by+E+F+Benson+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div class="field">
+        <label for="playerCount">Player count supports</label>
+        <select id="playerCount">
+          <option value="">Any</option>
+        </select>
+        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;">Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.</div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">15</span>
-      <div class="book-info">
-        <div class="book-title">A Phantom Lover: and Other Dark Tales by Vernon Lee <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=A+Phantom+Lover%3A+and+Other+Dark+Tales+by+Vernon+Lee+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">16</span>
-      <div class="book-info">
-        <div class="book-title">Into the London Fog: Eerie Tales from the Weird City</div>
-        <div class="book-editor">ed. Elizabeth Dearnley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Into+the+London+Fog%3A+Eerie+Tales+from+the+Weird+City+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">17</span>
-      <div class="book-info">
-        <div class="book-title">Weird Woods: Tales from the Haunted Forests of Britain</div>
-        <div class="book-editor">ed. John Miller</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Weird+Woods%3A+Tales+from+the+Haunted+Forests+of+Britain+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">18</span>
-      <div class="book-info">
-        <div class="book-title">Queens of the Abyss: Lost Stories from the Women of the Weird</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Queens+of+the+Abyss%3A+Lost+Stories+from+the+Women+of+the+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">19</span>
-      <div class="book-info">
-        <div class="book-title">Chill Tidings: Dark Tales of the Christmas Season</div>
-        <div class="book-editor">ed. Tanya Kirk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Chill+Tidings%3A+Dark+Tales+of+the+Christmas+Season+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
 
-  <!-- 2021 -->
-  <h2 class="year-heading">2021</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">20</span>
-      <div class="book-info">
-        <div class="book-title">Dangerous Dimensions: Mind-Bending Tales of the Mathematical Weird</div>
-        <div class="book-editor">ed. Henry Bartholomew</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Dangerous+Dimensions%3A+Mind-Bending+Tales+of+the+Mathematical+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div class="field">
+        <label>Weight (complexity)</label>
+        <div class="range-row">
+          <input type="number" id="weightMin" step="0.1" min="1" max="5">
+          <span>to</span>
+          <input type="number" id="weightMax" step="0.1" min="1" max="5">
+        </div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">21</span>
-      <div class="book-info">
-        <div class="book-title">Heavy Weather: Tempestuous Tales of Stranger Climes</div>
-        <div class="book-editor">ed. Kevan Manwaring</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Heavy+Weather%3A+Tempestuous+Tales+of+Stranger+Climes+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">22</span>
-      <div class="book-info">
-        <div class="book-title">Minor Hauntings: Chilling Tales of Spectral Youth</div>
-        <div class="book-editor">ed. Jen Baker</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Minor+Hauntings%3A+Chilling+Tales+of+Spectral+Youth+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">23</span>
-      <div class="book-info">
-        <div class="book-title">Crawling Horror: Creeping Tales of the Insect Weird</div>
-        <div class="book-editor">eds. Daisy Butcher &amp; Janette Leaf</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Crawling+Horror%3A+Creeping+Tales+of+the+Insect+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">24</span>
-      <div class="book-info">
-        <div class="book-title">Cornish Horrors: Tales from the Land&#39;s End</div>
-        <div class="book-editor">ed. Joan Passey</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Cornish+Horrors%3A+Tales+from+the+Land%26%2339%3Bs+End+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">25</span>
-      <div class="book-info">
-        <div class="book-title">I Am Stone: The Gothic Weird Tales of R. Murray Gilchrist <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Daniel Pietersen</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=I+Am+Stone%3A+The+Gothic+Weird+Tales+of+R.+Murray+Gilchrist+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">26</span>
-      <div class="book-info">
-        <div class="book-title">Randalls Round: Nine Nightmares by Eleanor Scott <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Aaron Worth</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Randalls+Round%3A+Nine+Nightmares+by+Eleanor+Scott+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">27</span>
-      <div class="book-info">
-        <div class="book-title">Sunless Solstice: Strange Christmas Tales for the Longest Night</div>
-        <div class="book-editor">eds. Lucy Evans &amp; Tanya Kirk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Sunless+Solstice%3A+Strange+Christmas+Tales+for+the+Longest+Night+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
 
-  <!-- 2022 -->
-  <h2 class="year-heading">2022</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">28</span>
-      <div class="book-info">
-        <div class="book-title">Shadows on the Wall: Dark Tales by Mary E. Wilkins Freeman <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Shadows+on+the+Wall%3A+Dark+Tales+by+Mary+E.+Wilkins+Freeman+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div class="field">
+        <label>Min BGG rating</label>
+        <div class="range-row">
+          <input type="number" id="ratingMin" step="0.1" min="0" max="10" value="0">
+          <span>and up</span>
+        </div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">29</span>
-      <div class="book-info">
-        <div class="book-title">The Ghost Slayers: Classic Tales of Occult Detection</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Ghost+Slayers%3A+Classic+Tales+of+Occult+Detection+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">30</span>
-      <div class="book-info">
-        <div class="book-title">The Night Wire and Other Tales of Weird Media</div>
-        <div class="book-editor">ed. Aaron Worth</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Night+Wire+and+Other+Tales+of+Weird+Media+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">31</span>
-      <div class="book-info">
-        <div class="book-title">Our Haunted Shores: Tales from the Coasts of the British Isles</div>
-        <div class="book-editor">eds. Emily Alder, Jimmy Packham &amp; Joan Passey</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Our+Haunted+Shores%3A+Tales+from+the+Coasts+of+the+British+Isles+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">32</span>
-      <div class="book-info">
-        <div class="book-title">The Horned God: Weird Tales of the Great God Pan</div>
-        <div class="book-editor">ed. Michael Wheatley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Horned+God%3A+Weird+Tales+of+the+Great+God+Pan+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">33</span>
-      <div class="book-info">
-        <div class="book-title">Spectral Sounds: Unquiet Tales of Acoustic Weird</div>
-        <div class="book-editor">ed. Manon Burz-Labrande</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Spectral+Sounds%3A+Unquiet+Tales+of+Acoustic+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">34</span>
-      <div class="book-info">
-        <div class="book-title">Haunters at the Hearth: Eerie Tales for Christmas Nights</div>
-        <div class="book-editor">ed. Tanya Kirk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Haunters+at+the+Hearth%3A+Eerie+Tales+for+Christmas+Nights+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">35</span>
-      <div class="book-info">
-        <div class="book-title">Polar Horrors: Chilling Tales from the Ends of the Earth</div>
-        <div class="book-editor">ed. John Miller</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Polar+Horrors%3A+Chilling+Tales+from+the+Ends+of+the+Earth+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
 
-  <!-- 2023 -->
-  <h2 class="year-heading">2023</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">36</span>
-      <div class="book-info">
-        <div class="book-title">The Flaw in the Crystal: And Other Uncanny Stories by May Sinclair <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Flaw+in+the+Crystal%3A+And+Other+Uncanny+Stories+by+May+Sinclair+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div class="field">
+        <label for="searchBox">Search by name</label>
+        <input type="text" id="searchBox" placeholder="e.g. wingspan">
+        <div class="toggle-row" style="display:flex;gap:6px;margin-top:8px;">
+          <button type="button" class="toggle-btn active" data-mode="include" id="modeInclude">Show matches</button>
+          <button type="button" class="toggle-btn" data-mode="exclude" id="modeExclude">Hide matches</button>
+        </div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">37</span>
-      <div class="book-info">
-        <div class="book-title">The Ways of Ghosts: And Other Dark Tales by Ambrose Bierce <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Ways+of+Ghosts%3A+And+Other+Dark+Tales+by+Ambrose+Bierce+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">38</span>
-      <div class="book-info">
-        <div class="book-title">Holy Ghosts: Classic Tales of the Ecclesiastical Uncanny</div>
-        <div class="book-editor">ed. Fiona Snailham</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Holy+Ghosts%3A+Classic+Tales+of+the+Ecclesiastical+Uncanny+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">39</span>
-      <div class="book-info">
-        <div class="book-title">The Uncanny Gastronomic: Strange Tales of the Edible Weird</div>
-        <div class="book-editor">ed. Zara-Louise Stubbs</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Uncanny+Gastronomic%3A+Strange+Tales+of+the+Edible+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">40</span>
-      <div class="book-info">
-        <div class="book-title">The Lure of Atlantis: Strange Tales from the Sunken Continent</div>
-        <div class="book-editor">ed. Michael Wheatley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Lure+of+Atlantis%3A+Strange+Tales+from+the+Sunken+Continent+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">41</span>
-      <div class="book-info">
-        <div class="book-title">Dead Drunk: Tales of Intoxication and Demon Drinks</div>
-        <div class="book-editor">ed. Pam Lock</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Dead+Drunk%3A+Tales+of+Intoxication+and+Demon+Drinks+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">42</span>
-      <div class="book-info">
-        <div class="book-title">The House on the Borderland <span class="badge">Single Author</span></div>
-        <div class="book-editor">William Hope Hodgson</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+House+on+the+Borderland+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">43</span>
-      <div class="book-info">
-        <div class="book-title">Roads of Destiny: And Other Tales of Alternative Histories and Parallel Realms</div>
-        <div class="book-editor">ed. Alasdair Richmond</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Roads+of+Destiny%3A+And+Other+Tales+of+Alternative+Histories+and+Parallel+Realms+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">44</span>
-      <div class="book-info">
-        <div class="book-title">Circles of Stone: Weird Tales of Pagan Sites and Ancient Rites</div>
-        <div class="book-editor">ed. Katy Soar</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Circles+of+Stone%3A+Weird+Tales+of+Pagan+Sites+and+Ancient+Rites+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
 
-  <!-- 2024 -->
-  <h2 class="year-heading">2024</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">45</span>
-      <div class="book-info">
-        <div class="book-title">Doomed Romances: Strange Tales of Uncanny Love</div>
-        <div class="book-editor">ed. Jo Parsons</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Doomed+Romances%3A+Strange+Tales+of+Uncanny+Love+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div class="field">
+        <label>Options</label>
+        <div class="checkbox-row">
+          <input type="checkbox" id="excludeExpansions" checked>
+          <label for="excludeExpansions">Exclude expansions</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="excludeUnrated">
+          <label for="excludeUnrated">Only show games with a weight rating</label>
+        </div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">46</span>
-      <div class="book-info">
-        <div class="book-title">The Undying Monster: A Tale of the Fifth Dimension <span class="badge">Single Author</span></div>
-        <div class="book-editor">Jessie Douglas Kerruish</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Undying+Monster%3A+A+Tale+of+the+Fifth+Dimension+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">47</span>
-      <div class="book-info">
-        <div class="book-title">Fear in the Blood: Tales from the Dark Lineages of the Weird</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Fear+in+the+Blood%3A+Tales+from+the+Dark+Lineages+of+the+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">48</span>
-      <div class="book-info">
-        <div class="book-title">Out of the Past: Tales of Haunting History</div>
-        <div class="book-editor">ed. Aaron Worth</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Out+of+the+Past%3A+Tales+of+Haunting+History+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">49</span>
-      <div class="book-info">
-        <div class="book-title">The Night Land <span class="badge">Single Author</span></div>
-        <div class="book-editor">William Hope Hodgson</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Night+Land+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">50</span>
-      <div class="book-info">
-        <div class="book-title">Deadly Dolls: Haunting Tales of the Uncanny</div>
-        <div class="book-editor">ed. Elizabeth Dearnley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Deadly+Dolls%3A+Haunting+Tales+of+the+Uncanny+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">51</span>
-      <div class="book-info">
-        <div class="book-title">The Human Chord <span class="badge">Single Author</span></div>
-        <div class="book-editor">Algernon Blackwood</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Human+Chord+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">52</span>
-      <div class="book-info">
-        <div class="book-title">Eerie East Anglia: Fearful Tales of Field and Fen</div>
-        <div class="book-editor">ed. Edward Parnell</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Eerie+East+Anglia%3A+Fearful+Tales+of+Field+and+Fen+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">53</span>
-      <div class="book-info">
-        <div class="book-title">The Haunted Trail: Classic Tales of the Rambling Weird</div>
-        <div class="book-editor">ed. Weird Walk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Haunted+Trail%3A+Classic+Tales+of+the+Rambling+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">54</span>
-      <div class="book-info">
-        <div class="book-title">The Weird Tales of Dorothy K. Haynes <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Craig Lamont</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Weird+Tales+of+Dorothy+K.+Haynes+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">55</span>
-      <div class="book-info">
-        <div class="book-title">The Haunted Vintage <span class="badge">Single Author</span></div>
-        <div class="book-editor">Marjorie Bowen</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Haunted+Vintage+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">56</span>
-      <div class="book-info">
-        <div class="book-title">Summoned to the S&#233;ance: Spirit Tales from Beyond the Veil</div>
-        <div class="book-editor">ed. Emily Vincent</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Summoned+to+the+S%26%23233%3Bance%3A+Spirit+Tales+from+Beyond+the+Veil+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
 
-  <!-- 2025 -->
-  <h2 class="year-heading">2025</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">57</span>
-      <div class="book-info">
-        <div class="book-title">Weird Sisters: Tales from the Queens of the Pulp Era</div>
-        <div class="book-editor">ed. Mike Ashley</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Weird+Sisters%3A+Tales+from+the+Queens+of+the+Pulp+Era+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">58</span>
-      <div class="book-info">
-        <div class="book-title">Julia Roseingrave <span class="badge">Single Author</span></div>
-        <div class="book-editor">Marjorie Bowen</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Julia+Roseingrave+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">59</span>
-      <div class="book-info">
-        <div class="book-title">Spores of Doom: Dank Tales of the Fungal Weird</div>
-        <div class="book-editor">ed. Aaron Worth</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Spores+of+Doom%3A+Dank+Tales+of+the+Fungal+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">60</span>
-      <div class="book-info">
-        <div class="book-title">Medusa: A Novel of Mystery, Ecstasy and Strange Horror <span class="badge">Single Author</span></div>
-        <div class="book-editor">E. H. Visiak</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Medusa%3A+A+Novel+of+Mystery%2C+Ecstasy+and+Strange+Horror+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">61</span>
-      <div class="book-info">
-        <div class="book-title">Return of the Ancients: Unruly Tales of the Mythological Weird</div>
-        <div class="book-editor">ed. Katy Soars</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Return+of+the+Ancients%3A+Unruly+Tales+of+the+Mythological+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">62</span>
-      <div class="book-info">
-        <div class="book-title">Phantoms of Kernow: Classic Tales of Haunted Cornwall</div>
-        <div class="book-editor">ed. Joan Passey</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Phantoms+of+Kernow%3A+Classic+Tales+of+Haunted+Cornwall+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">63</span>
-      <div class="book-info">
-        <div class="book-title">The Lost Stradivarius <span class="badge">Single Author</span></div>
-        <div class="book-editor">J. Meade Falkner</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Lost+Stradivarius+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">64</span>
-      <div class="book-info">
-        <div class="book-title">The Wayfarer&#39;s Weird</div>
-        <div class="book-editor">ed. Weird Walk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Wayfarer%26%2339%3Bs+Weird+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">65</span>
-      <div class="book-info">
-        <div class="book-title">The Tiger Skin and Other Tales of the Uneasy by Violet Hunt <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Melissa Edmundson</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Tiger+Skin+and+Other+Tales+of+the+Uneasy+by+Violet+Hunt+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">66</span>
-      <div class="book-info">
-        <div class="book-title">All the Fear of the Fair: Uncanny Tales of Circus and Sideshow</div>
-        <div class="book-editor">ed. Edward Parnell</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=All+the+Fear+of+the+Fair%3A+Uncanny+Tales+of+Circus+and+Sideshow+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">67</span>
-      <div class="book-info">
-        <div class="book-title">The Haunted Library: Tales of Cursed Books and Forbidden Shelves</div>
-        <div class="book-editor">ed. Tanya Kirk</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Haunted+Library%3A+Tales+of+Cursed+Books+and+Forbidden+Shelves+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">68</span>
-      <div class="book-info">
-        <div class="book-title">Possessed: A Lost Novel of the Occult <span class="badge">Single Author</span></div>
-        <div class="book-editor">Rosalie and Edward Synton</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Possessed%3A+A+Lost+Novel+of+the+Occult+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
-      </div>
-    </li>
-  </ul>
+    </div>
 
-  <!-- 2026 -->
-  <h2 class="year-heading">2026</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">69</span>
-      <div class="book-info">
-        <div class="book-title">Bird of Ill Omen: The Gothic Tales of Catherine Crowe <span class="badge">Single Author</span></div>
-        <div class="book-editor">ed. Ruth Heholt</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=Bird+of+Ill+Omen%3A+The+Gothic+Tales+of+Catherine+Crowe+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+    <div class="theme-box">
+      <div class="theme-head">
+        <span class="lbl">Themes / Categories</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="theme-status" id="themeStatus"></span>
+          <button class="btn-enrich" id="enrichBtn">Fetch themes from BGG</button>
+        </div>
       </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">70</span>
-      <div class="book-info">
-        <div class="book-title">The Black Fox <span class="badge">Single Author</span></div>
-        <div class="book-editor">Gerald Heard</div>
-        <div class="book-status"><span class="status-icon">✗</span> Not Owned</div>
-        <a class='amz-link' href='https://www.amazon.com/s?k=The+Black+Fox+british+library' target='_blank' rel='noopener'>Buy on Amazon ↗</a>
+      <div id="themeArea">
+        <p class="theme-empty">Category/theme data isn't included in BGG's CSV export. Click "Fetch themes from BGG" to look up each game's official categories via BGG's API (routed through a free public CORS proxy, since BGG's API blocks direct browser requests) — may take a moment for large collections.</p>
       </div>
-    </li>
-  </ul>
+    </div>
+  </div>
 
-  <!-- FORTHCOMING -->
-  <h2 class="year-heading forthcoming">Forthcoming</h2>
-  <ul class="book-list">
-    <li class="book-item">
-      <span class="book-num">71</span>
-      <div class="book-info">
-        <div class="book-title">The New Flesh: Tales of Shapeshifters and Strange Transformations <span class="badge">Coming Soon</span></div>
-        <div class="book-editor">ed. Mark Morris</div>
-        
-      </div>
-    </li>
-    <li class="book-item">
-      <span class="book-num">72</span>
-      <div class="book-info">
-        <div class="book-title">The Luck of the Town <span class="badge">Coming Soon</span> <span class="badge">Single Author</span></div>
-        <div class="book-editor">Marion Fox</div>
-        
-      </div>
-    </li>
-  </ul>
+  <div class="results-bar" id="resultsBar" style="display:none;">
+    <div class="results-count"><b id="resultCount">0</b> games match</div>
+    <div class="results-tools">
+      <label for="sortBy" style="font-size:12px;color:#a9bcae;font-family:'IBM Plex Mono',monospace;">SORT BY</label>
+      <select id="sortBy">
+        <option value="weight-asc">Weight (light → heavy)</option>
+        <option value="weight-desc">Weight (heavy → light)</option>
+        <option value="rating-desc">Rating (high → low)</option>
+        <option value="rating-asc">Rating (low → high)</option>
+        <option value="name-asc">Name (A → Z)</option>
+      </select>
+    </div>
+  </div>
 
-  <div class="ornament">✦ &nbsp; ✦ &nbsp; ✦</div>
+  <div class="grid" id="grid"></div>
+  <div class="no-results" id="noResults" style="display:none;">No games match these filters. Try widening the weight or rating range.</div>
+
+  <div class="download-row" id="downloadRow" style="display:none;">
+    <button class="btn-download" id="downloadBtn">↓ Download filtered results as CSV</button>
+  </div>
+
 </div>
 
-<footer>British Library Tales of the Weird · Collection Checklist</footer>
+<footer>Runs entirely in your browser — your collection data never leaves your device unless you click "Fetch themes from BGG".</footer>
 
 <script>
-  const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR8A9hah8OuJHF5E6fIxGx48VdIjnbtzoDvUABUgnW7jQ9YOcXG_PFhEXSw0-vV2A/pub?gid=1825339417&single=true&output=csv';
-  const PROXY_URL = 'https://corsproxy.io/?url=https://docs.google.com/spreadsheets/d/e/2PACX-1vR8A9hah8OuJHF5E6fIxGx48VdIjnbtzoDvUABUgnW7jQ9YOcXG_PFhEXSw0-vV2A/pub?gid=1825339417&single=true&output=csv';
+(function(){
+  let games = [];        // normalized game objects
+  let themesLoaded = false;
+  let activeThemes = new Set();
+  let allThemes = [];
 
-  function parseCSV(text) {
-    return text.split('\n').slice(1).map(row => {
-      const cols = [];
-      let cur = '', inQ = false;
-      for (let i = 0; i < row.length; i++) {
-        if (row[i] === '"') { inQ = !inQ; }
-        else if (row[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
-        else { cur += row[i]; }
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileLoaded = document.getElementById('fileLoaded');
+  const fnameEl = document.getElementById('fname');
+  const gameCountEl = document.getElementById('gameCount');
+  const clearBtn = document.getElementById('clearBtn');
+  const panel = document.getElementById('panel');
+  const resultsBar = document.getElementById('resultsBar');
+  const grid = document.getElementById('grid');
+  const noResults = document.getElementById('noResults');
+  const resultCount = document.getElementById('resultCount');
+  const downloadRow = document.getElementById('downloadRow');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const playerCountSel = document.getElementById('playerCount');
+  const weightMin = document.getElementById('weightMin');
+  const weightMax = document.getElementById('weightMax');
+  const ratingMin = document.getElementById('ratingMin');
+  const searchBox = document.getElementById('searchBox');
+  const modeInclude = document.getElementById('modeInclude');
+  const modeExclude = document.getElementById('modeExclude');
+  let searchMode = 'include';
+  const excludeExpansions = document.getElementById('excludeExpansions');
+  const excludeUnrated = document.getElementById('excludeUnrated');
+  const sortBy = document.getElementById('sortBy');
+  const enrichBtn = document.getElementById('enrichBtn');
+  const themeStatus = document.getElementById('themeStatus');
+  const themeArea = document.getElementById('themeArea');
+
+  // ---------- file handling ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+  clearBtn.addEventListener('click', () => {
+    games = [];
+    themesLoaded = false;
+    activeThemes = new Set();
+    fileInput.value = '';
+    fileLoaded.style.display = 'none';
+    dropzone.style.display = 'block';
+    panel.classList.remove('show');
+    resultsBar.style.display = 'none';
+    downloadRow.style.display = 'none';
+    grid.innerHTML = '';
+    themeArea.innerHTML = '<p class="theme-empty">Category/theme data isn\'t included in BGG\'s CSV export. Click "Fetch themes from BGG" to look up each game\'s official categories via BGG\'s API (routed through a free public CORS proxy) — may take a moment for large collections.</p>';
+    themeStatus.textContent = '';
+  });
+
+  function handleFile(file){
+    fnameEl.textContent = file.name;
+    Papa.parse(file, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results){
+        normalize(results.data, results.meta.fields);
+        fileLoaded.style.display = 'flex';
+        dropzone.style.display = 'none';
+        gameCountEl.textContent = games.length;
+        panel.classList.add('show');
+        resultsBar.style.display = 'flex';
+        buildPlayerOptions();
+        setDefaultRanges();
+        render();
+      },
+      error: function(err){
+        alert('Could not parse that CSV: ' + err.message);
       }
-      cols.push(cur.trim());
-      return cols;
-    }).filter(r => r[0] && r[0].match(/^\d+$/));
+    });
   }
 
-  async function loadFromSheet() {
-    // Try direct first (works if opened as local file), then proxy
-    for (const url of [CSV_URL, PROXY_URL]) {
+  function findField(fields, candidates){
+    const lower = fields.map(f => f.toLowerCase());
+    for (const c of candidates){
+      const idx = lower.indexOf(c);
+      if (idx !== -1) return fields[idx];
+    }
+    return null;
+  }
+
+  function normalize(rows, fields){
+    const fName = findField(fields, ['objectname','name']) || fields[0];
+    const fId = findField(fields, ['objectid','id']);
+    const fMin = findField(fields, ['minplayers']);
+    const fMax = findField(fields, ['maxplayers']);
+    const fWeight = findField(fields, ['avgweight','weight']);
+    const fRating = findField(fields, ['average','rating']);
+    const fType = findField(fields, ['itemtype']);
+    const fYear = findField(fields, ['yearpublished','year']);
+
+    const seen = new Set();
+    games = [];
+    rows.forEach(r => {
+      const name = fName ? r[fName] : null;
+      if (!name) return;
+      const id = fId ? r[fId] : name;
+      const dedupeKey = id + '::' + name;
+      if (seen.has(dedupeKey)) return; // drop true duplicate rows (same game logged twice)
+      seen.add(dedupeKey);
+
+      games.push({
+        name: String(name),
+        id: id,
+        min: fMin && r[fMin] != null ? Number(r[fMin]) : null,
+        max: fMax && r[fMax] != null ? Number(r[fMax]) : null,
+        weight: fWeight && r[fWeight] != null && r[fWeight] !== '' ? Number(r[fWeight]) : null,
+        rating: fRating && r[fRating] != null && r[fRating] !== '' ? Number(r[fRating]) : null,
+        type: fType ? r[fType] : null,
+        year: fYear ? r[fYear] : null,
+        themes: null // filled in on enrichment
+      });
+    });
+  }
+
+  function buildPlayerOptions(){
+    playerCountSel.innerHTML = '<option value="">Any</option>';
+    let maxSeen = 0;
+    games.forEach(g => { if (g.max && g.max > maxSeen && g.max <= 20) maxSeen = g.max; });
+    for (let n = 1; n <= Math.max(maxSeen, 8); n++){
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      playerCountSel.appendChild(opt);
+    }
+  }
+
+  function setDefaultRanges(){
+    const weights = games.map(g => g.weight).filter(w => w != null && w > 0);
+    if (weights.length){
+      weightMin.value = Math.floor(Math.min(...weights) * 10) / 10;
+      weightMax.value = Math.ceil(Math.max(...weights) * 10) / 10;
+    } else {
+      weightMin.value = 1; weightMax.value = 5;
+    }
+    ratingMin.value = 0;
+  }
+
+  // ---------- theme enrichment (optional, hits BGG's live API) ----------
+  enrichBtn.addEventListener('click', enrichThemes);
+
+  async function enrichThemes(){
+    if (!games.length) return;
+    enrichBtn.disabled = true;
+    const ids = games.map(g => g.id).filter(Boolean);
+    const batchSize = 20;
+    let done = 0;
+    const themeSet = new Set();
+    let hadError = false;
+
+    for (let i = 0; i < ids.length; i += batchSize){
+      const batch = ids.slice(i, i + batchSize);
+      themeStatus.textContent = `Fetching ${done}/${ids.length}...`;
       try {
-        const res = await fetch(url + '&_=' + Date.now(), { cache: 'no-store' });
-        if (!res.ok) continue;
+        const targetUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`;
+        const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxiedUrl);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
-        if (!text.trim()) continue;
-        const rows = parseCSV(text);
-        if (!rows.length) continue;
-        const owned = {};
-        rows.forEach(cols => {
-          const num = parseInt(cols[0]);
-          owned[num] = (cols[4] || '').toUpperCase().trim() === 'YES';
-        });
-        document.querySelectorAll('.book-item').forEach(el => {
-          const num = parseInt(el.querySelector('.book-num').textContent);
-          const isOwned = owned[num];
-          if (isOwned) el.classList.add('owned');
-          else el.classList.remove('owned');
-          const status = el.querySelector('.book-status');
-          if (status) {
-            status.innerHTML = isOwned
-              ? '<span class="status-icon">✓</span> Owned'
-              : '<span class="status-icon">✗</span> Not Owned';
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const items = xml.querySelectorAll('item');
+        items.forEach(item => {
+          const id = item.getAttribute('id');
+          const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
+            .map(l => l.getAttribute('value'));
+          const g = games.find(gm => String(gm.id) === String(id));
+          if (g){
+            g.themes = cats;
+            cats.forEach(c => themeSet.add(c));
           }
         });
-        updateStats();
-        return;
-      } catch(e) {
-        continue;
+      } catch (e){
+        hadError = true;
+        break;
       }
+      done += batch.length;
+      // brief pause to be polite to the API
+      await new Promise(r => setTimeout(r, 400));
     }
-    console.warn('Could not load sheet from either source');
+
+    enrichBtn.disabled = false;
+
+    if (hadError){
+      themeStatus.textContent = '';
+      themeArea.innerHTML = '<p class="theme-empty">Couldn\'t fetch theme data — BGG\'s API doesn\'t support direct browser requests, so this relies on a free public CORS proxy (api.allorigins.win) which can occasionally be slow, rate-limited, or down. Try again in a minute, or in smaller batches. Weight, player count, rating, and name filters all still work fine either way.</p>';
+      return;
+    }
+
+    themesLoaded = true;
+    allThemes = Array.from(themeSet).sort();
+    themeStatus.textContent = `Loaded themes for ${done} games`;
+    renderThemeChips();
+    render();
   }
 
-  function updateStats() {
-    const total = document.querySelectorAll('.book-item').length;
-    const owned = document.querySelectorAll('.book-item.owned').length;
-    document.getElementById('owned-count').textContent = owned;
-    document.getElementById('unread-count').textContent = total - owned;
-    document.getElementById('total-count').textContent = total;
-    const pct = Math.round((owned / total) * 100);
-    document.getElementById('progress-bar').style.width = pct + '%';
-    document.getElementById('progress-pct').textContent = pct + '% collected';
+  function renderThemeChips(){
+    if (!allThemes.length){
+      themeArea.innerHTML = '<p class="theme-empty">No category data came back for these games.</p>';
+      return;
+    }
+    themeArea.innerHTML = '';
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'theme-chips';
+    allThemes.forEach(theme => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = theme;
+      chip.addEventListener('click', () => {
+        if (activeThemes.has(theme)) activeThemes.delete(theme);
+        else activeThemes.add(theme);
+        chip.classList.toggle('active');
+        render();
+      });
+      chipWrap.appendChild(chip);
+    });
+    themeArea.appendChild(chipWrap);
   }
 
-  loadFromSheet();
+  // ---------- filtering + rendering ----------
+  [modeInclude, modeExclude].forEach(btn => {
+    btn.addEventListener('click', () => {
+      searchMode = btn.dataset.mode;
+      modeInclude.classList.toggle('active', searchMode === 'include');
+      modeExclude.classList.toggle('active', searchMode === 'exclude');
+      render();
+    });
+  });
+
+  [playerCountSel, weightMin, weightMax, ratingMin, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
+    el.addEventListener('input', render);
+    el.addEventListener('change', render);
+  });
+
+  function getFiltered(){
+    const n = playerCountSel.value ? Number(playerCountSel.value) : null;
+    const wMin = weightMin.value !== '' ? Number(weightMin.value) : null;
+    const wMax = weightMax.value !== '' ? Number(weightMax.value) : null;
+    const rMin = ratingMin.value !== '' ? Number(ratingMin.value) : 0;
+    const q = searchBox.value.trim().toLowerCase();
+
+    let out = games.filter(g => {
+      if (excludeExpansions.checked && g.type && g.type.toLowerCase() === 'expansion') return false;
+      if (n != null){
+        if (g.min == null || g.max == null) return false;
+        if (!(g.min <= n && g.max >= n)) return false;
+      }
+      if (excludeUnrated.checked && (g.weight == null || g.weight <= 0)) return false;
+      if (g.weight != null && g.weight > 0){
+        if (wMin != null && g.weight < wMin) return false;
+        if (wMax != null && g.weight > wMax) return false;
+      }
+      if (g.rating != null && rMin != null && g.rating < rMin) return false;
+      if (q){
+        const matches = g.name.toLowerCase().includes(q);
+        if (searchMode === 'include' && !matches) return false;
+        if (searchMode === 'exclude' && matches) return false;
+      }
+      if (activeThemes.size > 0){
+        if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
+      }
+      return true;
+    });
+
+    const [key, dir] = sortBy.value.split('-');
+    out.sort((a, b) => {
+      let av, bv;
+      if (key === 'weight'){ av = a.weight ?? 999; bv = b.weight ?? 999; }
+      else if (key === 'rating'){ av = a.rating ?? -1; bv = b.rating ?? -1; }
+      else { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return out;
+  }
+
+  function render(){
+    const filtered = getFiltered();
+    resultCount.textContent = filtered.length;
+    grid.innerHTML = '';
+
+    if (!filtered.length){
+      noResults.style.display = 'block';
+      downloadRow.style.display = 'none';
+      return;
+    }
+    noResults.style.display = 'none';
+    downloadRow.style.display = games.length ? 'block' : 'none';
+
+    filtered.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      const players = (g.min != null && g.max != null) ? `${g.min}–${g.max} players` : 'players n/a';
+      const weight = (g.weight != null && g.weight > 0) ? g.weight.toFixed(2) : '—';
+      const rating = (g.rating != null && g.rating > 0) ? g.rating.toFixed(2) : '—';
+      const themesHtml = (g.themes && g.themes.length)
+        ? `<div class="gthemes">${g.themes.slice(0,4).map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+      card.innerHTML = `
+        <div class="gname">${escapeHtml(g.name)}</div>
+        <div class="grow">
+          <span>${players}</span>
+          <span><b>${weight}</b> wt</span>
+          <span><b>${rating}</b> ★</span>
+        </div>
+        ${themesHtml}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- download filtered CSV ----------
+  downloadBtn.addEventListener('click', () => {
+    const filtered = getFiltered();
+    const header = ['name','minplayers','maxplayers','weight','rating','themes'];
+    const rows = filtered.map(g => [
+      g.name,
+      g.min ?? '',
+      g.max ?? '',
+      g.weight ?? '',
+      g.rating ?? '',
+      g.themes ? g.themes.join('; ') : ''
+    ]);
+    const csv = [header, ...rows].map(r =>
+      r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'filtered-collection.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+})();
 </script>
+
 </body>
 </html>
