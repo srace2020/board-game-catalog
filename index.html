@@ -664,24 +664,44 @@
   // ---------- theme enrichment (optional, hits BGG's live API) ----------
   enrichBtn.addEventListener('click', enrichThemes);
 
+  const CORS_PROXIES = [
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+    url => `https://thingproxy.freeboard.io/fetch/${url}`
+  ];
+
+  async function fetchViaProxies(targetUrl){
+    let lastErr = null;
+    for (const buildProxyUrl of CORS_PROXIES){
+      try {
+        const res = await fetch(buildProxyUrl(targetUrl));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        if (!text.includes('<item')) throw new Error('unexpected response');
+        return text;
+      } catch (e){
+        lastErr = e;
+        continue; // try the next proxy
+      }
+    }
+    throw lastErr || new Error('all proxies failed');
+  }
+
   async function enrichThemes(){
     if (!games.length) return;
     enrichBtn.disabled = true;
     const ids = games.map(g => g.id).filter(Boolean);
-    const batchSize = 20;
+    const batchSize = 15;
     let done = 0;
+    let failedBatches = 0;
     const themeSet = new Set();
-    let hadError = false;
 
     for (let i = 0; i < ids.length; i += batchSize){
       const batch = ids.slice(i, i + batchSize);
       themeStatus.textContent = `Fetching ${done}/${ids.length}...`;
       try {
         const targetUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`;
-        const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxiedUrl);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
+        const text = await fetchViaProxies(targetUrl);
         const xml = new DOMParser().parseFromString(text, 'text/xml');
         const items = xml.querySelectorAll('item');
         items.forEach(item => {
@@ -695,25 +715,26 @@
           }
         });
       } catch (e){
-        hadError = true;
-        break;
+        failedBatches++;
+        // skip this batch, keep going with the rest of the collection
       }
       done += batch.length;
-      // brief pause to be polite to the API
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 500));
     }
 
     enrichBtn.disabled = false;
 
-    if (hadError){
+    if (themeSet.size === 0){
       themeStatus.textContent = '';
-      themeArea.innerHTML = '<p class="theme-empty">Couldn\'t fetch theme data — BGG\'s API doesn\'t support direct browser requests, so this relies on a free public CORS proxy (api.allorigins.win) which can occasionally be slow, rate-limited, or down. Try again in a minute, or in smaller batches. Weight, player count, rating, and name filters all still work fine either way.</p>';
+      themeArea.innerHTML = '<p class="theme-empty">Couldn\'t fetch theme data from any of the three CORS proxies tried — they may all be rate-limited or down right now. Try again in a few minutes. Weight, player count, rating, and name filters all still work fine either way.</p>';
       return;
     }
 
     themesLoaded = true;
     allThemes = Array.from(themeSet).sort();
-    themeStatus.textContent = `Loaded themes for ${done} games`;
+    themeStatus.textContent = failedBatches
+      ? `Loaded themes for most games (${failedBatches} batch(es) failed — click "Fetch themes" again to retry those)`
+      : `Loaded themes for ${done} games`;
     renderThemeChips();
     render();
   }
@@ -867,4 +888,4 @@
 </script>
 
 </body>
-</html> 
+</html>
