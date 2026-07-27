@@ -6,7 +6,7 @@
 <title>Collection Catalog — BGG Filter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<!-- PapaParse removed: this version reads collections directly from BGG via username -->
 <style>
   :root{
     --felt:#152219;
@@ -190,6 +190,49 @@
     padding:3px 8px;
     border-radius:999px;
     font-family:'IBM Plex Sans',sans-serif;
+  }
+
+  .username-row{
+    display:flex;
+    gap:10px;
+    max-width:420px;
+    margin:0 auto;
+  }
+  .username-row input{
+    flex:1;
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:var(--card);
+    padding:10px 12px;
+    border-radius:6px;
+    font-size:14px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .username-row input:focus{outline:2px solid var(--focus);outline-offset:1px;}
+  .username-status{
+    margin-top:14px;
+    font-size:13px;
+    color:#a9bcae;
+    font-family:'IBM Plex Mono',monospace;
+    min-height:18px;
+  }
+  .username-status.error{color:#e08a7d;}
+
+  .worker-warning{
+    background:#3a2420;
+    border:1px solid var(--brick);
+    color:#f3d9d2;
+    border-radius:10px;
+    padding:14px 20px;
+    font-size:13.5px;
+    margin-bottom:20px;
+    line-height:1.5;
+  }
+  .worker-warning code{
+    background:#00000030;
+    padding:1px 6px;
+    border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
   }
 
   /* ---------- panel (filters) ---------- */
@@ -459,16 +502,24 @@
 <header>
   <div class="eyebrow">Board Game Collection</div>
   <h1>Collection Catalog</h1>
-  <p class="tagline">Upload one or more BoardGameGeek collection exports and sort your shared shelf by weight, player count, rating, theme, and owner.</p>
+  <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
 
 <div class="wrap">
 
-  <div id="dropzone" class="dropzone">
-    <input type="file" id="fileInput" accept=".csv" multiple>
-    <div class="dz-icon">🗂️</div>
-    <div class="dz-title" id="dzTitle">Drop a BGG collection CSV here, or click to browse</div>
-    <div class="dz-sub">Export it from <code>boardgamegeek.com/collection/user/YOURNAME</code> → Export → CSV. Add one file per person to build a shared group library.</div>
+  <div id="workerWarning" class="worker-warning" style="display:none;">
+    <strong>Setup needed:</strong> this version reads directly from BGG's API, which requires a Cloudflare Worker URL to be configured in the code (<code>BGG_WORKER_URL</code>). Add that first — see the app's build notes — before usernames can be loaded.
+  </div>
+
+  <div id="usernameBox" class="dropzone" style="cursor:default;">
+    <div class="dz-icon">🎲</div>
+    <div class="dz-title">Add a BGG username</div>
+    <div class="dz-sub" style="margin-bottom:14px;">Their collection must be set to public on BGG. Add one username per person to build a group library.</div>
+    <div class="username-row">
+      <input type="text" id="usernameInput" placeholder="e.g. fishman2020">
+      <button class="btn-enrich" id="addUsernameBtn">Add</button>
+    </div>
+    <div class="username-status" id="usernameStatus"></div>
   </div>
 
   <div id="sourcesBox" class="sources-box" style="display:none;">
@@ -536,11 +587,11 @@
         <span class="lbl">Themes / Categories</span>
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="theme-status" id="themeStatus"></span>
-          <button class="btn-enrich" id="enrichBtn">Fetch themes from BGG</button>
+          <button class="btn-enrich" id="enrichBtn" style="display:none;">Retry failed lookups</button>
         </div>
       </div>
       <div id="themeArea">
-        <p class="theme-empty">Category/theme data isn't included in BGG's CSV export. Click "Fetch themes from BGG" to look up each game's official categories via BGG's API (routed through a free public CORS proxy, since BGG's API blocks direct browser requests) — may take a moment for large collections.</p>
+        <p class="theme-empty">Weight and category data loads automatically from BGG as soon as a collection is added — no action needed here.</p>
       </div>
     </div>
 
@@ -579,19 +630,25 @@
 
 </div>
 
-<footer>Runs entirely in your browser — your collection data never leaves your device unless you click "Fetch themes from BGG".</footer>
+<footer>Runs entirely in your browser. Collection and game data is fetched live from BGG via your own Cloudflare Worker — nothing is stored on any server.</footer>
 
 <script>
 (function(){
-  let sources = [];      // [{ id, ownerName, rawGames: [...] }] one entry per uploaded file
+  // Paste your deployed Cloudflare Worker URL here once you have one, e.g.:
+  // const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
+  // Leave blank to fall back to shared public CORS proxies (slower, less reliable, thing-lookups only — no username support).
+  const BGG_WORKER_URL = '';
+
+  let sources = [];      // [{ id, ownerName, username, rawGames: [...] }] one entry per loaded BGG account
   let games = [];        // merged view across all sources, each with an `owners` array
-  let themesLoaded = false;
   let activeThemes = new Set();
   let allThemes = [];
   let activeOwners = new Set();
 
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
+  const workerWarning = document.getElementById('workerWarning');
+  const usernameInput = document.getElementById('usernameInput');
+  const addUsernameBtn = document.getElementById('addUsernameBtn');
+  const usernameStatus = document.getElementById('usernameStatus');
   const sourcesBox = document.getElementById('sourcesBox');
   const sourcesList = document.getElementById('sourcesList');
   const clearAllBtn = document.getElementById('clearAllBtn');
@@ -621,25 +678,22 @@
   const ownerArea = document.getElementById('ownerArea');
   const onlySharedGames = document.getElementById('onlySharedGames');
 
-  // ---------- file handling (multiple sources / people) ----------
-  dropzone.addEventListener('click', () => fileInput.click());
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    handleFiles(e.dataTransfer.files);
-  });
-  fileInput.addEventListener('change', e => {
-    handleFiles(e.target.files);
-    fileInput.value = ''; // allow re-selecting the same file later
-  });
+  // ---------- username-based collection loading ----------
+  if (!BGG_WORKER_URL) {
+    workerWarning.style.display = 'block';
+    addUsernameBtn.disabled = true;
+    usernameInput.disabled = true;
+  }
+
+  addUsernameBtn.addEventListener('click', addUsername);
+  usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addUsername(); });
+
   clearAllBtn.addEventListener('click', () => {
     sources = [];
     games = [];
-    themesLoaded = false;
     activeThemes = new Set();
     activeOwners = new Set();
+    allThemes = [];
     sourcesBox.style.display = 'none';
     sourcesList.innerHTML = '';
     panel.classList.remove('show');
@@ -647,40 +701,93 @@
     resultsBar.style.display = 'none';
     downloadRow.style.display = 'none';
     grid.innerHTML = '';
-    themeArea.innerHTML = '<p class="theme-empty">Category/theme data isn\'t included in BGG\'s CSV export. Click "Fetch themes from BGG" to look up each game\'s official categories via BGG\'s API (routed through a free public CORS proxy) — may take a moment for large collections.</p>';
+    usernameStatus.textContent = '';
+    usernameStatus.classList.remove('error');
+    enrichBtn.style.display = 'none';
     themeStatus.textContent = '';
   });
 
-  function handleFiles(fileList){
-    Array.from(fileList).forEach(file => {
-      if (!file.name.toLowerCase().endsWith('.csv')) return;
-      let ownerName = window.prompt(
-        `Whose collection is "${file.name}"? (shown as an owner tag — e.g. a first name)`,
-        file.name.replace(/\.csv$/i, '')
-      );
-      if (!ownerName || !ownerName.trim()) ownerName = file.name.replace(/\.csv$/i, '');
-      ownerName = ownerName.trim();
+  async function addUsername(){
+    const username = usernameInput.value.trim();
+    if (!username) return;
+    if (sources.some(s => s.username.toLowerCase() === username.toLowerCase())){
+      showUsernameStatus(`"${username}" is already loaded.`, true);
+      return;
+    }
 
-      Papa.parse(file, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: function(results){
-          const rawGames = normalize(results.data, results.meta.fields);
-          sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName, rawGames });
-          onSourcesChanged();
-        },
-        error: function(err){
-          alert(`Could not parse "${file.name}": ` + err.message);
-        }
+    addUsernameBtn.disabled = true;
+    showUsernameStatus(`Looking up ${username}'s collection... (BGG can take a few seconds to respond)`, false);
+
+    try {
+      const rawGames = await fetchCollection(username);
+      if (!rawGames.length){
+        showUsernameStatus(`No public board game collection found for "${username}" — check the spelling, or that their BGG collection is set to public.`, true);
+        return;
+      }
+      sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName: username, username, rawGames });
+      usernameInput.value = '';
+      onSourcesChanged();
+      showUsernameStatus(`Loaded ${rawGames.length} games for ${username}. Fetching weight & theme data from BGG...`, false);
+      await enrichAllGames();
+      setDefaultRanges();
+      render();
+      showUsernameStatus(`${username}'s collection is ready.`, false);
+    } catch (e){
+      showUsernameStatus(`Couldn't load "${username}": ${e.message}`, true);
+    } finally {
+      addUsernameBtn.disabled = false;
+    }
+  }
+
+  function showUsernameStatus(msg, isError){
+    usernameStatus.textContent = msg;
+    usernameStatus.classList.toggle('error', !!isError);
+  }
+
+  // fetch a user's public collection from BGG via the Worker. Player counts
+  // and community rating come from here; weight/categories are filled in
+  // separately by enrichAllGames since BGG's collection endpoint omits them.
+  async function fetchCollection(username){
+    const url = `${BGG_WORKER_URL}?username=${encodeURIComponent(username)}&subtype=boardgame`;
+    const res = await fetchWithTimeout(url, 25000);
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' from your Worker');
+    const text = await res.text();
+    if (/invalid username/i.test(text)) throw new Error('BGG says this username doesn\'t exist');
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    const items = Array.from(xml.querySelectorAll('item'));
+    const out = [];
+    const seen = new Set();
+    items.forEach(item => {
+      const id = item.getAttribute('objectid');
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      const nameEl = item.querySelector('name');
+      const name = nameEl ? nameEl.textContent : null;
+      if (!name) return;
+      const statsEl = item.querySelector('stats');
+      const min = statsEl && statsEl.getAttribute('minplayers') ? Number(statsEl.getAttribute('minplayers')) : null;
+      const max = statsEl && statsEl.getAttribute('maxplayers') ? Number(statsEl.getAttribute('maxplayers')) : null;
+      const avgEl = statsEl ? statsEl.querySelector('rating > average') : null;
+      const ratingVal = avgEl ? Number(avgEl.getAttribute('value')) : null;
+      const yearEl = item.querySelector('yearpublished');
+      const subtype = item.getAttribute('subtype');
+      out.push({
+        name: String(name),
+        id: id,
+        min: min, max: max,
+        weight: null, // filled in by enrichAllGames
+        rating: (ratingVal && ratingVal > 0) ? ratingVal : null,
+        type: subtype === 'boardgameexpansion' ? 'expansion' : 'standalone',
+        year: yearEl ? yearEl.textContent : null,
+        themes: null
       });
     });
+    return out;
   }
 
   function onSourcesChanged(){
     mergeSources();
     renderSourcesList();
-    dropzone.querySelector('.dz-title').textContent = 'Drop another person\'s CSV here, or click to add one';
     sourcesBox.style.display = sources.length ? 'block' : 'none';
     panel.classList.toggle('show', games.length > 0);
     ownerBox.style.display = sources.length > 1 ? 'block' : 'none';
@@ -729,67 +836,25 @@
   }
 
   // merge every source's games into one library, tracking who owns each copy.
-  // games are matched by BGG objectid (or name, if no id) so the same game
-  // owned by two people becomes one entry tagged with both owners.
+  // games are matched by BGG objectid so the same game owned by two people
+  // becomes one entry tagged with both owners.
   function mergeSources(){
     const merged = new Map(); // key -> game record
     sources.forEach(src => {
       src.rawGames.forEach(g => {
         const key = String(g.id);
         if (!merged.has(key)){
-          merged.set(key, { ...g, owners: [src.ownerName], themes: g.themes || null });
+          merged.set(key, { ...g, owners: [src.ownerName] });
         } else {
           const existing = merged.get(key);
           if (!existing.owners.includes(src.ownerName)) existing.owners.push(src.ownerName);
+          // keep whichever copy already has weight/themes filled in, if either does
+          if (!existing.weight && g.weight) existing.weight = g.weight;
+          if (!existing.themes && g.themes) existing.themes = g.themes;
         }
       });
     });
     games = Array.from(merged.values());
-  }
-
-  function findField(fields, candidates){
-    const lower = fields.map(f => f.toLowerCase());
-    for (const c of candidates){
-      const idx = lower.indexOf(c);
-      if (idx !== -1) return fields[idx];
-    }
-    return null;
-  }
-
-  // returns a normalized array of games for ONE file — does not touch global state
-  function normalize(rows, fields){
-    const fName = findField(fields, ['objectname','name']) || fields[0];
-    const fId = findField(fields, ['objectid','id']);
-    const fMin = findField(fields, ['minplayers']);
-    const fMax = findField(fields, ['maxplayers']);
-    const fWeight = findField(fields, ['avgweight','weight']);
-    const fRating = findField(fields, ['average','rating']);
-    const fType = findField(fields, ['itemtype']);
-    const fYear = findField(fields, ['yearpublished','year']);
-
-    const seen = new Set();
-    const out = [];
-    rows.forEach(r => {
-      const name = fName ? r[fName] : null;
-      if (!name) return;
-      const id = fId ? r[fId] : name;
-      const dedupeKey = id + '::' + name;
-      if (seen.has(dedupeKey)) return; // drop true duplicate rows (same game logged twice)
-      seen.add(dedupeKey);
-
-      out.push({
-        name: String(name),
-        id: id,
-        min: fMin && r[fMin] != null ? Number(r[fMin]) : null,
-        max: fMax && r[fMax] != null ? Number(r[fMax]) : null,
-        weight: fWeight && r[fWeight] != null && r[fWeight] !== '' ? Number(r[fWeight]) : null,
-        rating: fRating && r[fRating] != null && r[fRating] !== '' ? Number(r[fRating]) : null,
-        type: fType ? r[fType] : null,
-        year: fYear ? r[fYear] : null,
-        themes: null // filled in on enrichment
-      });
-    });
-    return out;
   }
 
   function buildPlayerOptions(){
@@ -818,13 +883,8 @@
   onlySharedGames.addEventListener('change', render);
 
 
-  // ---------- theme enrichment (optional, hits BGG's live API) ----------
-  enrichBtn.addEventListener('click', enrichThemes);
-
-  // Paste your deployed Cloudflare Worker URL here once you have one, e.g.:
-  // const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
-  // Leave blank to fall back to shared public CORS proxies (slower, less reliable).
-  const BGG_WORKER_URL = '';
+  // ---------- data enrichment (weight + categories, via BGG's live API) ----------
+  enrichBtn.addEventListener('click', enrichAllGames);
 
   const CORS_PROXIES = [
     url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -912,16 +972,16 @@
     await Promise.all(Array.from({ length: slots }, (_, slot) => runNext(slot)));
   }
 
-  async function enrichThemes(){
-    if (!games.length) return;
-    enrichBtn.disabled = true;
-    const ids = games.map(g => g.id).filter(Boolean);
+  async function enrichAllGames(){
+    const idsNeeded = games.filter(g => g.weight == null).map(g => g.id).filter(Boolean);
+    if (!idsNeeded.length) return;
+
     const batchSize = 20;
     const batches = [];
-    for (let i = 0; i < ids.length; i += batchSize) batches.push(ids.slice(i, i + batchSize));
+    for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
 
     let failedBatches = 0;
-    const themeSet = new Set();
+    const themeSet = new Set(allThemes);
     const concurrency = BGG_WORKER_URL ? 6 : 3; // your own Worker can handle more parallel load
 
     await runPool(batches, concurrency, async (batch, batchIndex) => {
@@ -936,32 +996,24 @@
         const id = item.getAttribute('id');
         const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
           .map(l => l.getAttribute('value'));
+        const weightEl = item.querySelector('statistics ratings averageweight');
+        const weightVal = weightEl ? Number(weightEl.getAttribute('value')) : null;
         const g = games.find(gm => String(gm.id) === String(id));
         if (g){
           g.themes = cats;
+          if (weightVal && weightVal > 0) g.weight = weightVal;
           cats.forEach(c => themeSet.add(c));
         }
       });
     });
 
-    enrichBtn.disabled = false;
-
-    if (themeSet.size === 0){
-      themeStatus.textContent = '';
-      themeArea.innerHTML = BGG_WORKER_URL
-        ? '<p class="theme-empty">Couldn\'t fetch theme data from your Worker. Double-check the Worker URL in the code and that it\'s deployed with a valid BGG token. Weight, player count, rating, and name filters all still work fine either way.</p>'
-        : '<p class="theme-empty">Couldn\'t fetch theme data — all three CORS proxies are rate-limited or down right now. This is a limitation of relying on free public proxies rather than a backend of your own. Try again in a few minutes. Weight, player count, rating, and name filters all still work fine either way.</p>';
-      return;
-    }
-
-    themesLoaded = true;
     allThemes = Array.from(themeSet).sort();
     const doneCount = games.filter(g => g.themes).length;
+    enrichBtn.style.display = failedBatches ? 'inline-block' : 'none';
     themeStatus.textContent = failedBatches
-      ? `Loaded themes for ${doneCount} games (${failedBatches} batch(es) failed — click "Fetch themes" again to retry those)`
-      : `Loaded themes for ${doneCount} games`;
-    renderThemeChips();
-    render();
+      ? `Loaded details for ${doneCount}/${games.length} games (${failedBatches} batch(es) failed)`
+      : `Loaded details for ${doneCount} games`;
+    if (allThemes.length) renderThemeChips();
   }
 
   function renderThemeChips(){
