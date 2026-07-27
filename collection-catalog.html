@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collection Catalog — BGG Filter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --felt:#152219;
+    --felt-deep:#0d1610;
+    --card:#f1e7d0;
+    --card-shadow:#00000055;
+    --ink:#241d13;
+    --ink-soft:#6b5f47;
+    --brick:#a83c32;
+    --brick-dark:#7c2c25;
+    --gold:#c69a2f;
+    --gold-soft:#e0be6a;
+    --line:#d9cba3;
+    --green-tab:#3c6b4a;
+    --focus:#e0be6a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, #1c2e21 0%, var(--felt) 45%, var(--felt-deep) 100%);
+    background-attachment:fixed;
+    color:var(--card);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:0 0 80px 0;
+  }
+  a{color:inherit;}
+
+  /* ---------- header ---------- */
+  header{
+    padding:56px 24px 28px;
+    text-align:center;
+    position:relative;
+  }
+  header::after{
+    content:"";
+    display:block;
+    width:120px;
+    height:3px;
+    background:var(--gold);
+    margin:20px auto 0;
+    border-radius:2px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    letter-spacing:.25em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--gold-soft);
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Special Elite', monospace;
+    font-weight:400;
+    font-size:clamp(32px,5vw,52px);
+    margin:0;
+    color:var(--card);
+    letter-spacing:.5px;
+  }
+  .tagline{
+    font-size:15px;
+    color:#c9d6c9;
+    margin-top:12px;
+    max-width:520px;
+    margin-left:auto;
+    margin-right:auto;
+    line-height:1.5;
+  }
+
+  /* ---------- layout ---------- */
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 24px;
+  }
+
+  /* ---------- upload dropzone ---------- */
+  .dropzone{
+    border:2px dashed #4f6b57;
+    border-radius:10px;
+    padding:40px 24px;
+    text-align:center;
+    background:#ffffff08;
+    transition:border-color .2s, background .2s;
+    cursor:pointer;
+  }
+  .dropzone.dragover{
+    border-color:var(--gold);
+    background:#ffffff12;
+  }
+  .dropzone input{display:none;}
+  .dz-icon{font-size:34px;margin-bottom:10px;}
+  .dz-title{font-weight:600;font-size:16px;color:var(--card);}
+  .dz-sub{font-size:13px;color:#a9bcae;margin-top:6px;}
+  .dz-sub code{
+    background:#00000030;
+    padding:1px 6px;
+    border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  .file-loaded{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    background:#ffffff0d;
+    border:1px solid #3d5443;
+    border-radius:10px;
+    padding:14px 20px;
+    font-size:14px;
+    flex-wrap:wrap;
+  }
+  .file-loaded .fname{font-family:'IBM Plex Mono',monospace;color:var(--gold-soft);}
+  .btn-ghost{
+    background:none;
+    border:1px solid #5a7562;
+    color:#dfe9e0;
+    padding:7px 14px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold-soft);}
+
+  /* ---------- panel (filters) ---------- */
+  .panel{
+    background:var(--felt-deep);
+    border:1px solid #2c3c30;
+    border-radius:12px;
+    margin-top:28px;
+    padding:24px 26px 20px;
+    display:none;
+  }
+  .panel.show{display:block;}
+  .panel-title{
+    font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;
+    letter-spacing:.15em;
+    font-size:12px;
+    color:var(--gold-soft);
+    margin:0 0 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:#31432f;
+  }
+  .filters-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:20px 24px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:#a9bcae;
+    margin-bottom:8px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .field select, .field input[type=text], .field input[type=number]{
+    width:100%;
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:var(--card);
+    padding:9px 10px;
+    border-radius:6px;
+    font-size:14px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .field select:focus, .field input:focus{
+    outline:2px solid var(--focus);
+    outline-offset:1px;
+  }
+  .range-row{display:flex;align-items:center;gap:8px;}
+  .range-row input{width:100%;}
+  .range-row span{color:#7f9587;font-size:13px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--brick);}
+  .checkbox-row label{font-size:13px;color:#cddace;margin:0;text-transform:none;letter-spacing:0;font-family:'IBM Plex Sans',sans-serif;}
+
+  .theme-box{
+    margin-top:20px;
+    border-top:1px dashed #31432f;
+    padding-top:18px;
+  }
+  .theme-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .theme-head .lbl{
+    font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:12px;
+    color:#a9bcae;
+  }
+  .btn-enrich{
+    background:var(--green-tab);
+    border:none;
+    color:#eef5ef;
+    padding:8px 16px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:600;
+  }
+  .btn-enrich:hover{background:#4d7f5c;}
+  .btn-enrich:disabled{opacity:.5;cursor:not-allowed;}
+  .theme-status{font-size:12px;color:#8fa896;font-family:'IBM Plex Mono',monospace;}
+  .theme-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    font-size:12.5px;
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid #46614d;
+    background:#0e1712;
+    color:#cddace;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    user-select:none;
+  }
+  .chip.active{
+    background:var(--brick);
+    border-color:var(--brick);
+    color:#fff5ec;
+  }
+  .theme-empty{font-size:13px;color:#7f9587;font-style:italic;}
+
+  /* ---------- results header ---------- */
+  .results-bar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:30px 0 16px;
+  }
+  .results-count{
+    font-family:'Special Elite',monospace;
+    font-size:20px;
+    color:var(--card);
+  }
+  .results-count b{color:var(--gold-soft);}
+  .results-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .results-tools select{
+    background:#0e1712;
+    border:1px solid #3a4d3d;
+    color:var(--card);
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:13px;
+  }
+
+  /* ---------- card grid (catalog cards) ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:16px;
+  }
+  .gcard{
+    background:var(--card);
+    color:var(--ink);
+    border-radius:4px 4px 8px 8px;
+    box-shadow:0 6px 14px var(--card-shadow);
+    padding:16px 16px 14px;
+    position:relative;
+    border-top:8px solid var(--brick);
+    display:flex;
+    flex-direction:column;
+    min-height:150px;
+  }
+  .gcard::before{
+    content:"";
+    position:absolute;
+    top:-6px; left:20px;
+    width:14px;height:14px;
+    background:var(--gold);
+    border-radius:50%;
+    box-shadow:0 1px 2px #0004;
+  }
+  .gcard .gname{
+    font-family:'Special Elite',monospace;
+    font-size:16.5px;
+    line-height:1.25;
+    margin:6px 0 10px;
+  }
+  .gcard .grow{
+    display:flex;
+    gap:14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .gcard .grow b{color:var(--ink);}
+  .gcard .gthemes{
+    margin-top:auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    padding-top:8px;
+  }
+  .gtag{
+    font-size:10.5px;
+    background:#00000012;
+    padding:3px 8px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+
+  .no-results{
+    text-align:center;
+    padding:60px 20px;
+    color:#8fa896;
+    font-size:14px;
+  }
+
+  /* ---------- download ---------- */
+  .download-row{
+    text-align:center;
+    margin-top:28px;
+  }
+  .btn-download{
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--gold-soft);
+    padding:10px 22px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:.05em;
+  }
+  .btn-download:hover{background:var(--gold);color:#241d13;}
+
+  @media (prefers-reduced-motion:no-preference){
+    .gcard{transition:transform .15s ease;}
+    .gcard:hover{transform:translateY(-3px);}
+    .chip{transition:background .15s,border-color .15s;}
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:#628068;
+    margin-top:60px;
+    padding-top:20px;
+    border-top:1px solid #24332580;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Board Game Collection</div>
+  <h1>Collection Catalog</h1>
+  <p class="tagline">Upload a BoardGameGeek collection export and sort your shelf by weight, player count, rating, and theme.</p>
+</header>
+
+<div class="wrap">
+
+  <div id="dropzone" class="dropzone">
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="dz-icon">🗂️</div>
+    <div class="dz-title">Drop your BGG collection CSV here, or click to browse</div>
+    <div class="dz-sub">Export it from <code>boardgamegeek.com/collection/user/YOURNAME</code> → Export → CSV</div>
+  </div>
+
+  <div id="fileLoaded" class="file-loaded" style="display:none;">
+    <span>Loaded: <span class="fname" id="fname"></span> — <span id="gameCount"></span> games</span>
+    <button class="btn-ghost" id="clearBtn">Load a different file</button>
+  </div>
+
+  <div class="panel" id="panel">
+    <p class="panel-title">Filters</p>
+    <div class="filters-grid">
+
+      <div class="field">
+        <label for="playerCount">Plays exactly N players</label>
+        <select id="playerCount">
+          <option value="">Any</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Weight (complexity)</label>
+        <div class="range-row">
+          <input type="number" id="weightMin" step="0.1" min="1" max="5">
+          <span>to</span>
+          <input type="number" id="weightMax" step="0.1" min="1" max="5">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Min BGG rating</label>
+        <div class="range-row">
+          <input type="number" id="ratingMin" step="0.1" min="0" max="10" value="0">
+          <span>and up</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="searchBox">Search by name</label>
+        <input type="text" id="searchBox" placeholder="e.g. wingspan">
+      </div>
+
+      <div class="field">
+        <label>Options</label>
+        <div class="checkbox-row">
+          <input type="checkbox" id="excludeExpansions" checked>
+          <label for="excludeExpansions">Exclude expansions</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="excludeUnrated">
+          <label for="excludeUnrated">Only show games with a weight rating</label>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="theme-box">
+      <div class="theme-head">
+        <span class="lbl">Themes / Categories</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="theme-status" id="themeStatus"></span>
+          <button class="btn-enrich" id="enrichBtn">Fetch themes from BGG</button>
+        </div>
+      </div>
+      <div id="themeArea">
+        <p class="theme-empty">Category/theme data isn't included in BGG's CSV export. Click "Fetch themes from BGG" to look up each game's official categories (requires a network request per batch of games — may take a moment for large collections).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-bar" id="resultsBar" style="display:none;">
+    <div class="results-count"><b id="resultCount">0</b> games match</div>
+    <div class="results-tools">
+      <label for="sortBy" style="font-size:12px;color:#a9bcae;font-family:'IBM Plex Mono',monospace;">SORT BY</label>
+      <select id="sortBy">
+        <option value="weight-asc">Weight (light → heavy)</option>
+        <option value="weight-desc">Weight (heavy → light)</option>
+        <option value="rating-desc">Rating (high → low)</option>
+        <option value="rating-asc">Rating (low → high)</option>
+        <option value="name-asc">Name (A → Z)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="no-results" id="noResults" style="display:none;">No games match these filters. Try widening the weight or rating range.</div>
+
+  <div class="download-row" id="downloadRow" style="display:none;">
+    <button class="btn-download" id="downloadBtn">↓ Download filtered results as CSV</button>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser — your collection data never leaves your device unless you click "Fetch themes from BGG".</footer>
+
+<script>
+(function(){
+  let games = [];        // normalized game objects
+  let themesLoaded = false;
+  let activeThemes = new Set();
+  let allThemes = [];
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileLoaded = document.getElementById('fileLoaded');
+  const fnameEl = document.getElementById('fname');
+  const gameCountEl = document.getElementById('gameCount');
+  const clearBtn = document.getElementById('clearBtn');
+  const panel = document.getElementById('panel');
+  const resultsBar = document.getElementById('resultsBar');
+  const grid = document.getElementById('grid');
+  const noResults = document.getElementById('noResults');
+  const resultCount = document.getElementById('resultCount');
+  const downloadRow = document.getElementById('downloadRow');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const playerCountSel = document.getElementById('playerCount');
+  const weightMin = document.getElementById('weightMin');
+  const weightMax = document.getElementById('weightMax');
+  const ratingMin = document.getElementById('ratingMin');
+  const searchBox = document.getElementById('searchBox');
+  const excludeExpansions = document.getElementById('excludeExpansions');
+  const excludeUnrated = document.getElementById('excludeUnrated');
+  const sortBy = document.getElementById('sortBy');
+  const enrichBtn = document.getElementById('enrichBtn');
+  const themeStatus = document.getElementById('themeStatus');
+  const themeArea = document.getElementById('themeArea');
+
+  // ---------- file handling ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+  clearBtn.addEventListener('click', () => {
+    games = [];
+    themesLoaded = false;
+    activeThemes = new Set();
+    fileInput.value = '';
+    fileLoaded.style.display = 'none';
+    dropzone.style.display = 'block';
+    panel.classList.remove('show');
+    resultsBar.style.display = 'none';
+    downloadRow.style.display = 'none';
+    grid.innerHTML = '';
+    themeArea.innerHTML = '<p class="theme-empty">Category/theme data isn\'t included in BGG\'s CSV export. Click "Fetch themes from BGG" to look up each game\'s official categories (requires a network request per batch of games — may take a moment for large collections).</p>';
+    themeStatus.textContent = '';
+  });
+
+  function handleFile(file){
+    fnameEl.textContent = file.name;
+    Papa.parse(file, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results){
+        normalize(results.data, results.meta.fields);
+        fileLoaded.style.display = 'flex';
+        dropzone.style.display = 'none';
+        gameCountEl.textContent = games.length;
+        panel.classList.add('show');
+        resultsBar.style.display = 'flex';
+        buildPlayerOptions();
+        setDefaultRanges();
+        render();
+      },
+      error: function(err){
+        alert('Could not parse that CSV: ' + err.message);
+      }
+    });
+  }
+
+  function findField(fields, candidates){
+    const lower = fields.map(f => f.toLowerCase());
+    for (const c of candidates){
+      const idx = lower.indexOf(c);
+      if (idx !== -1) return fields[idx];
+    }
+    return null;
+  }
+
+  function normalize(rows, fields){
+    const fName = findField(fields, ['objectname','name']) || fields[0];
+    const fId = findField(fields, ['objectid','id']);
+    const fMin = findField(fields, ['minplayers']);
+    const fMax = findField(fields, ['maxplayers']);
+    const fWeight = findField(fields, ['avgweight','weight']);
+    const fRating = findField(fields, ['average','rating']);
+    const fType = findField(fields, ['itemtype']);
+    const fYear = findField(fields, ['yearpublished','year']);
+
+    const seen = new Set();
+    games = [];
+    rows.forEach(r => {
+      const name = fName ? r[fName] : null;
+      if (!name) return;
+      const id = fId ? r[fId] : name;
+      const dedupeKey = id + '::' + name;
+      if (seen.has(dedupeKey)) return; // drop true duplicate rows (same game logged twice)
+      seen.add(dedupeKey);
+
+      games.push({
+        name: String(name),
+        id: id,
+        min: fMin && r[fMin] != null ? Number(r[fMin]) : null,
+        max: fMax && r[fMax] != null ? Number(r[fMax]) : null,
+        weight: fWeight && r[fWeight] != null && r[fWeight] !== '' ? Number(r[fWeight]) : null,
+        rating: fRating && r[fRating] != null && r[fRating] !== '' ? Number(r[fRating]) : null,
+        type: fType ? r[fType] : null,
+        year: fYear ? r[fYear] : null,
+        themes: null // filled in on enrichment
+      });
+    });
+  }
+
+  function buildPlayerOptions(){
+    playerCountSel.innerHTML = '<option value="">Any</option>';
+    let maxSeen = 0;
+    games.forEach(g => { if (g.max && g.max > maxSeen && g.max <= 20) maxSeen = g.max; });
+    for (let n = 1; n <= Math.max(maxSeen, 8); n++){
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      playerCountSel.appendChild(opt);
+    }
+  }
+
+  function setDefaultRanges(){
+    const weights = games.map(g => g.weight).filter(w => w != null && w > 0);
+    if (weights.length){
+      weightMin.value = Math.floor(Math.min(...weights) * 10) / 10;
+      weightMax.value = Math.ceil(Math.max(...weights) * 10) / 10;
+    } else {
+      weightMin.value = 1; weightMax.value = 5;
+    }
+    ratingMin.value = 0;
+  }
+
+  // ---------- theme enrichment (optional, hits BGG's live API) ----------
+  enrichBtn.addEventListener('click', enrichThemes);
+
+  async function enrichThemes(){
+    if (!games.length) return;
+    enrichBtn.disabled = true;
+    const ids = games.map(g => g.id).filter(Boolean);
+    const batchSize = 20;
+    let done = 0;
+    const themeSet = new Set();
+    let hadError = false;
+
+    for (let i = 0; i < ids.length; i += batchSize){
+      const batch = ids.slice(i, i + batchSize);
+      themeStatus.textContent = `Fetching ${done}/${ids.length}...`;
+      try {
+        const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const items = xml.querySelectorAll('item');
+        items.forEach(item => {
+          const id = item.getAttribute('id');
+          const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
+            .map(l => l.getAttribute('value'));
+          const g = games.find(gm => String(gm.id) === String(id));
+          if (g){
+            g.themes = cats;
+            cats.forEach(c => themeSet.add(c));
+          }
+        });
+      } catch (e){
+        hadError = true;
+        break;
+      }
+      done += batch.length;
+      // brief pause to be polite to the API
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    enrichBtn.disabled = false;
+
+    if (hadError){
+      themeStatus.textContent = '';
+      themeArea.innerHTML = '<p class="theme-empty">Couldn\'t reach BGG\'s API from this page (likely blocked by CORS in your browser, or you\'re offline). Weight, player count, rating and name filters still work fine — theme filtering just isn\'t available here.</p>';
+      return;
+    }
+
+    themesLoaded = true;
+    allThemes = Array.from(themeSet).sort();
+    themeStatus.textContent = `Loaded themes for ${done} games`;
+    renderThemeChips();
+    render();
+  }
+
+  function renderThemeChips(){
+    if (!allThemes.length){
+      themeArea.innerHTML = '<p class="theme-empty">No category data came back for these games.</p>';
+      return;
+    }
+    themeArea.innerHTML = '';
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'theme-chips';
+    allThemes.forEach(theme => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = theme;
+      chip.addEventListener('click', () => {
+        if (activeThemes.has(theme)) activeThemes.delete(theme);
+        else activeThemes.add(theme);
+        chip.classList.toggle('active');
+        render();
+      });
+      chipWrap.appendChild(chip);
+    });
+    themeArea.appendChild(chipWrap);
+  }
+
+  // ---------- filtering + rendering ----------
+  [playerCountSel, weightMin, weightMax, ratingMin, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
+    el.addEventListener('input', render);
+    el.addEventListener('change', render);
+  });
+
+  function getFiltered(){
+    const n = playerCountSel.value ? Number(playerCountSel.value) : null;
+    const wMin = weightMin.value !== '' ? Number(weightMin.value) : null;
+    const wMax = weightMax.value !== '' ? Number(weightMax.value) : null;
+    const rMin = ratingMin.value !== '' ? Number(ratingMin.value) : 0;
+    const q = searchBox.value.trim().toLowerCase();
+
+    let out = games.filter(g => {
+      if (excludeExpansions.checked && g.type && g.type.toLowerCase() === 'expansion') return false;
+      if (n != null){
+        if (g.min == null || g.max == null) return false;
+        if (!(g.min <= n && g.max >= n)) return false;
+      }
+      if (excludeUnrated.checked && (g.weight == null || g.weight <= 0)) return false;
+      if (g.weight != null && g.weight > 0){
+        if (wMin != null && g.weight < wMin) return false;
+        if (wMax != null && g.weight > wMax) return false;
+      }
+      if (g.rating != null && rMin != null && g.rating < rMin) return false;
+      if (q && !g.name.toLowerCase().includes(q)) return false;
+      if (activeThemes.size > 0){
+        if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
+      }
+      return true;
+    });
+
+    const [key, dir] = sortBy.value.split('-');
+    out.sort((a, b) => {
+      let av, bv;
+      if (key === 'weight'){ av = a.weight ?? 999; bv = b.weight ?? 999; }
+      else if (key === 'rating'){ av = a.rating ?? -1; bv = b.rating ?? -1; }
+      else { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return out;
+  }
+
+  function render(){
+    const filtered = getFiltered();
+    resultCount.textContent = filtered.length;
+    grid.innerHTML = '';
+
+    if (!filtered.length){
+      noResults.style.display = 'block';
+      downloadRow.style.display = 'none';
+      return;
+    }
+    noResults.style.display = 'none';
+    downloadRow.style.display = games.length ? 'block' : 'none';
+
+    filtered.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      const players = (g.min != null && g.max != null) ? `${g.min}–${g.max} players` : 'players n/a';
+      const weight = (g.weight != null && g.weight > 0) ? g.weight.toFixed(2) : '—';
+      const rating = (g.rating != null && g.rating > 0) ? g.rating.toFixed(2) : '—';
+      const themesHtml = (g.themes && g.themes.length)
+        ? `<div class="gthemes">${g.themes.slice(0,4).map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+      card.innerHTML = `
+        <div class="gname">${escapeHtml(g.name)}</div>
+        <div class="grow">
+          <span>${players}</span>
+          <span><b>${weight}</b> wt</span>
+          <span><b>${rating}</b> ★</span>
+        </div>
+        ${themesHtml}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- download filtered CSV ----------
+  downloadBtn.addEventListener('click', () => {
+    const filtered = getFiltered();
+    const header = ['name','minplayers','maxplayers','weight','rating','themes'];
+    const rows = filtered.map(g => [
+      g.name,
+      g.min ?? '',
+      g.max ?? '',
+      g.weight ?? '',
+      g.rating ?? '',
+      g.themes ? g.themes.join('; ') : ''
+    ]);
+    const csv = [header, ...rows].map(r =>
+      r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'filtered-collection.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+})();
+</script>
+
+</body>
+</html>
