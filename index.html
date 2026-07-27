@@ -84,21 +84,14 @@
     padding:0 24px;
   }
 
-  /* ---------- upload dropzone ---------- */
-  .dropzone{
-    border:2px dashed #4f6b57;
+  /* ---------- username input box ---------- */
+  .input-box{
+    border:1px solid #3a4d3d;
     border-radius:10px;
     padding:40px 24px;
     text-align:center;
     background:#ffffff08;
-    transition:border-color .2s, background .2s;
-    cursor:pointer;
   }
-  .dropzone.dragover{
-    border-color:var(--gold);
-    background:#ffffff12;
-  }
-  .dropzone input{display:none;}
   .dz-icon{font-size:34px;margin-bottom:10px;}
   .dz-title{font-weight:600;font-size:16px;color:var(--card);}
   .dz-sub{font-size:13px;color:#a9bcae;margin-top:6px;}
@@ -209,6 +202,16 @@
     font-family:'IBM Plex Sans',sans-serif;
   }
   .username-row input:focus{outline:2px solid var(--focus);outline-offset:1px;}
+  .username-row input:disabled{
+    background:#1a2620;
+    border-color:#2c3c30;
+    color:#5f7568;
+    cursor:not-allowed;
+  }
+  .username-row button:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+  }
   .username-status{
     margin-top:14px;
     font-size:13px;
@@ -508,10 +511,10 @@
 <div class="wrap">
 
   <div id="workerWarning" class="worker-warning" style="display:none;">
-    <strong>Setup needed:</strong> this version reads directly from BGG's API, which requires a Cloudflare Worker  to be configured in the code (<code>BGG_WORKER_</code>). Add that first — see the app's build notes — before usernames can be loaded.
+    <strong>Setup needed:</strong> this version reads directly from BGG's API, which requires a Cloudflare Worker URL to be configured in the code (<code>BGG_WORKER_URL</code>). Add that first — see the app's build notes — before usernames can be loaded.
   </div>
 
-  <div id="usernameBox" class="dropzone" style="cursor:default;">
+  <div id="usernameBox" class="input-box">
     <div class="dz-icon">🎲</div>
     <div class="dz-title">Add a BGG username</div>
     <div class="dz-sub" style="margin-bottom:14px;">Their collection must be set to public on BGG. Add one username per person to build a group library.</div>
@@ -634,9 +637,7 @@
 
 <script>
 (function(){
-  // Paste your deployed Cloudflare Worker URL here once you have one, e.g.:
-  // const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
-  // Leave blank to fall back to shared public CORS proxies (slower, less reliable, thing-lookups only — no username support).
+  // ↓↓↓ PASTE YOUR CLOUDFLARE WORKER URL BETWEEN THESE QUOTES — this is the only line to edit ↓↓↓
   const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
 
   let sources = [];      // [{ id, ownerName, username, rawGames: [...] }] one entry per loaded BGG account
