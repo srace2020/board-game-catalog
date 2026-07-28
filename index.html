@@ -489,6 +489,18 @@
     color:#8f8fb8;
     font-size:14px;
   }
+  .loading-msg{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--gold-soft);
+    font-size:14px;
+    font-family:'IBM Plex Mono',monospace;
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:.6;}
+    50%{opacity:1;}
+  }
 
   /* ---------- download ---------- */
   .download-row{
@@ -655,6 +667,7 @@
     </div>
   </div>
 
+  <div class="loading-msg" id="loadingMsg" style="display:none;">Fetching weight, category, and expansion data for every game before showing results — this can take a minute or two for large collections.</div>
   <div class="grid" id="grid"></div>
   <div class="no-results" id="noResults" style="display:none;">No games match these filters. Try widening the weight or rating range.</div>
 
@@ -679,6 +692,7 @@
   let activeThemes = new Set();
   let allThemes = [];
   let activeOwners = new Set();
+  let isEnriching = false; // when true, hold off showing any results until enrichment fully finishes
 
   const workerWarning = document.getElementById('workerWarning');
   const usernameInput = document.getElementById('usernameInput');
@@ -689,6 +703,7 @@
   const clearAllBtn = document.getElementById('clearAllBtn');
   const panel = document.getElementById('panel');
   const resultsBar = document.getElementById('resultsBar');
+  const loadingMsg = document.getElementById('loadingMsg');
   const grid = document.getElementById('grid');
   const noResults = document.getElementById('noResults');
   const resultCount = document.getElementById('resultCount');
@@ -761,9 +776,11 @@
       }
       sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName: username, username, rawGames });
       usernameInput.value = '';
+      isEnriching = true;
       onSourcesChanged();
-      showUsernameStatus(`Loaded ${rawGames.length} games for ${username}. Fetching weight & theme data from BGG...`, false);
+      showUsernameStatus(`Loaded ${rawGames.length} games for ${username}. Fetching weight & theme data from BGG before showing results...`, false);
       await enrichAllGames();
+      isEnriching = false;
       setDefaultRanges();
       render();
       showUsernameStatus(`${username}'s collection is ready.`, false);
@@ -1073,9 +1090,11 @@
     await Promise.all(Array.from({ length: slots }, (_, slot) => runNext(slot)));
   }
 
-  async function enrichAllGames(){
+  async function enrichAllGames(pass){
+    pass = pass || 1;
     const idsNeeded = games.filter(g => g.weight == null).map(g => g.id).filter(Boolean);
     if (!idsNeeded.length) return;
+    if (pass > 1) themeStatus.textContent = `Retrying rate-limited games (pass ${pass})...`;
 
     const batchSize = 40; // bigger batches = fewer total requests for large collections
     const batches = [];
@@ -1151,15 +1170,27 @@
     });
 
     allThemes = Array.from(themeSet).sort();
+    render(); // reflect newly-corrected weight/theme/expansion data as each pass completes
+
     const doneCount = games.filter(g => g.themes).length;
+    const MAX_AUTO_PASSES = 4;
+
+    if (failedRateLimited > 0 && pass < MAX_AUTO_PASSES){
+      themeStatus.textContent = `Loaded ${doneCount} so far — pausing briefly before retrying ${failedRateLimited} rate-limited game(s) (pass ${pass}/${MAX_AUTO_PASSES})...`;
+      await sleep(5000 * pass); // give BGG progressively more breathing room each pass
+      await enrichAllGames(pass + 1);
+      return;
+    }
+
     enrichBtn.style.display = (failedRateLimited || failedBadIds) ? 'inline-block' : 'none';
     const parts = [];
-    if (failedRateLimited) parts.push(`${failedRateLimited} game(s) skipped due to rate-limiting — click "Retry failed lookups" to try again`);
+    if (failedRateLimited) parts.push(`${failedRateLimited} game(s) still rate-limited after ${pass} automatic passes — click "Retry failed lookups" to try again`);
     if (failedBadIds) parts.push(`${failedBadIds} game(s) couldn't be resolved on BGG (likely stale/merged IDs — not retryable)`);
     themeStatus.textContent = parts.length
       ? `Loaded details for ${doneCount} games (${parts.join('; ')})`
       : `Loaded details for ${doneCount} games`;
     if (allThemes.length) renderThemeChips();
+    render();
   }
 
   function renderThemeChips(){
@@ -1249,6 +1280,16 @@
   }
 
   function render(){
+    if (isEnriching){
+      grid.innerHTML = '';
+      noResults.style.display = 'none';
+      downloadRow.style.display = 'none';
+      loadingMsg.style.display = 'block';
+      resultsBar.style.display = 'none';
+      return;
+    }
+    loadingMsg.style.display = 'none';
+
     const filtered = getFiltered();
     resultCount.textContent = filtered.length;
     grid.innerHTML = '';
