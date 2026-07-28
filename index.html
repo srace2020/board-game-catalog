@@ -1074,19 +1074,15 @@
     const batches = [];
     for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
 
-    let failedBatches = 0;
+    let failedIds = 0;
+    let totalProcessed = 0;
     const themeSet = new Set(allThemes);
     // scale concurrency down for very large collections — better to go a bit
     // slower than to trip the rate limit repeatedly across hundreds of batches
     let concurrency = BGG_WORKER_URL ? 6 : 3;
     if (batches.length > 30) concurrency = Math.min(concurrency, 3);
 
-    await runPool(batches, concurrency, async (batch, batchIndex) => {
-      const text = await fetchBatchWithRetry(batch, batchIndex);
-      if (!text){
-        failedBatches++;
-        return;
-      }
+    function applyItemsFromXml(text){
       const xml = new DOMParser().parseFromString(text, 'text/xml');
       const items = xml.querySelectorAll('item');
       items.forEach(item => {
@@ -1107,13 +1103,43 @@
           cats.forEach(c => themeSet.add(c));
         }
       });
+      return items.length;
+    }
+
+    // A batch can fail entirely because ONE id in it is stale/merged/invalid —
+    // BGG's thing endpoint fails the whole request with no indication of which
+    // id is the problem. So on failure, split the batch in half and retry each
+    // half — this isolates a single bad id instead of losing the whole batch,
+    // and simply retrying the same full batch would fail identically forever.
+    async function enrichRange(ids, batchIndex){
+      const text = await fetchBatchWithRetry(ids, batchIndex);
+      if (text){
+        applyItemsFromXml(text);
+        totalProcessed += ids.length;
+        themeStatus.textContent = `Loaded details for ${totalProcessed}/${idsNeeded.length}...`;
+        return;
+      }
+      if (ids.length === 1){
+        failedIds++; // a single id that genuinely won't resolve (likely stale/merged on BGG's end)
+        totalProcessed += 1;
+        return;
+      }
+      const mid = Math.ceil(ids.length / 2);
+      await Promise.all([
+        enrichRange(ids.slice(0, mid), batchIndex),
+        enrichRange(ids.slice(mid), batchIndex + 1)
+      ]);
+    }
+
+    await runPool(batches, concurrency, async (batch, batchIndex) => {
+      await enrichRange(batch, batchIndex);
     });
 
     allThemes = Array.from(themeSet).sort();
     const doneCount = games.filter(g => g.themes).length;
-    enrichBtn.style.display = failedBatches ? 'inline-block' : 'none';
-    themeStatus.textContent = failedBatches
-      ? `Loaded details for ${doneCount}/${games.length} games (${failedBatches} batch(es) failed)`
+    enrichBtn.style.display = failedIds ? 'inline-block' : 'none';
+    themeStatus.textContent = failedIds
+      ? `Loaded details for ${doneCount} games (${failedIds} game(s) couldn't be resolved on BGG — likely stale/merged IDs, not retryable)`
       : `Loaded details for ${doneCount} games`;
     if (allThemes.length) renderThemeChips();
   }
