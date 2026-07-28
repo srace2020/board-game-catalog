@@ -659,7 +659,7 @@
 <script>
 (function(){
   // ↓↓↓ PASTE YOUR CLOUDFLARE WORKER URL BETWEEN THESE QUOTES — this is the only line to edit ↓↓↓
-  const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev/';
+  const BGG_WORKER_URL = '';
 
   let sources = [];      // [{ id, ownerName, username, rawGames: [...] }] one entry per loaded BGG account
   let games = [];        // merged view across all sources, each with an `owners` array
@@ -787,7 +787,7 @@
 
   async function fetchCollectionSubtype(username, subtype){
     const url = `${BGG_WORKER_URL}?username=${encodeURIComponent(username)}&subtype=${subtype}`;
-    const res = await fetchWithRetry429(url, 25000);
+    const res = await fetchWithRetry429(url, 25000, 6);
     if (res.status === 429) throw new Error('BGG is rate-limiting requests right now — wait a minute and try again');
     if (!res.ok) throw new Error('HTTP ' + res.status + ' from your Worker');
     const text = await res.text();
@@ -811,6 +811,7 @@
       const yearEl = item.querySelector('yearpublished');
       const itemSubtype = item.getAttribute('subtype');
       const thumbEl = item.querySelector('thumbnail');
+      const imageEl = item.querySelector('image'); // full-resolution version, much sharper than thumbnail
       out.push({
         name: String(name),
         id: id,
@@ -819,6 +820,7 @@
         rating: (ratingVal && ratingVal > 0) ? ratingVal : null,
         type: itemSubtype === 'boardgameexpansion' ? 'expansion' : 'standalone',
         year: yearEl ? yearEl.textContent : null,
+        image: imageEl ? imageEl.textContent.trim() : null,
         thumbnail: thumbEl ? thumbEl.textContent.trim() : null,
         themes: null
       });
@@ -893,6 +895,7 @@
           if (!existing.weight && g.weight) existing.weight = g.weight;
           if (!existing.themes && g.themes) existing.themes = g.themes;
           if (!existing.thumbnail && g.thumbnail) existing.thumbnail = g.thumbnail;
+          if (!existing.image && g.image) existing.image = g.image;
         }
       });
     });
@@ -947,21 +950,38 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // shared across every request: when ANY call gets a 429, everyone else
+  // (in-flight or about to start) waits out the same cooldown instead of
+  // each request backing off independently and re-triggering the limit in
+  // overlapping waves — this matters a lot once a collection has hundreds
+  // of enrichment batches firing with concurrency.
+  let rateLimitCooldownUntil = 0;
+
+  async function waitForCooldown(){
+    const remaining = rateLimitCooldownUntil - Date.now();
+    if (remaining > 0) await sleep(remaining);
+  }
+
+  function setCooldown(ms){
+    rateLimitCooldownUntil = Math.max(rateLimitCooldownUntil, Date.now() + ms);
+  }
+
   // fetch with automatic backoff specifically for HTTP 429 (rate limited) —
   // respects a Retry-After header if BGG/the Worker sends one, otherwise
-  // backs off exponentially. Other error statuses are returned immediately
-  // since retrying won't help those.
+  // backs off exponentially, and shares that cooldown with every other
+  // in-flight request. Other error statuses are returned immediately since
+  // retrying won't help those.
   async function fetchWithRetry429(url, timeoutMs, maxRetries){
-    maxRetries = maxRetries ?? 3;
+    maxRetries = maxRetries ?? 5;
     let res;
     for (let attempt = 0; attempt <= maxRetries; attempt++){
+      await waitForCooldown();
       res = await fetchWithTimeout(url, timeoutMs);
       if (res.status !== 429) return res;
-      if (attempt < maxRetries){
-        const retryAfter = res.headers.get('Retry-After');
-        const waitMs = retryAfter ? Number(retryAfter) * 1000 : (800 * Math.pow(2, attempt)) + Math.random() * 300;
-        await sleep(waitMs);
-      }
+      const retryAfter = res.headers.get('Retry-After');
+      const waitMs = retryAfter ? Number(retryAfter) * 1000 : (1000 * Math.pow(2, attempt)) + Math.random() * 400;
+      setCooldown(waitMs);
+      if (attempt < maxRetries) await waitForCooldown();
     }
     return res; // still 429 after all retries
   }
@@ -1037,13 +1057,16 @@
     const idsNeeded = games.filter(g => g.weight == null).map(g => g.id).filter(Boolean);
     if (!idsNeeded.length) return;
 
-    const batchSize = 20;
+    const batchSize = 40; // bigger batches = fewer total requests for large collections
     const batches = [];
     for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
 
     let failedBatches = 0;
     const themeSet = new Set(allThemes);
-    const concurrency = BGG_WORKER_URL ? 6 : 3; // your own Worker can handle more parallel load
+    // scale concurrency down for very large collections — better to go a bit
+    // slower than to trip the rate limit repeatedly across hundreds of batches
+    let concurrency = BGG_WORKER_URL ? 6 : 3;
+    if (batches.length > 30) concurrency = Math.min(concurrency, 3);
 
     await runPool(batches, concurrency, async (batch, batchIndex) => {
       const text = await fetchBatchWithRetry(batch, batchIndex);
@@ -1059,10 +1082,15 @@
           .map(l => l.getAttribute('value'));
         const weightEl = item.querySelector('statistics ratings averageweight');
         const weightVal = weightEl ? Number(weightEl.getAttribute('value')) : null;
+        // BGG's collection endpoint is known to mistag some expansions as
+        // "boardgame" — the thing endpoint's own top-level type is accurate,
+        // so use it to correct the classification we guessed earlier.
+        const trueType = item.getAttribute('type');
         const g = games.find(gm => String(gm.id) === String(id));
         if (g){
           g.themes = cats;
           if (weightVal && weightVal > 0) g.weight = weightVal;
+          if (trueType) g.type = trueType === 'boardgameexpansion' ? 'expansion' : 'standalone';
           cats.forEach(c => themeSet.add(c));
         }
       });
@@ -1188,8 +1216,8 @@
       const ownersHtml = (sources.length > 1 && g.owners && g.owners.length)
         ? `<div class="gthemes">${g.owners.map(o => `<span class="owner-tag">${escapeHtml(o)}</span>`).join('')}</div>`
         : '';
-      const thumbHtml = g.thumbnail
-        ? `<img class="gthumb" src="${escapeHtml(g.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+      const thumbHtml = (g.image || g.thumbnail)
+        ? `<img class="gthumb" src="${escapeHtml(g.image || g.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(g.thumbnail || '')}';if(!this.src)this.style.display='none';">`
         : '';
       card.innerHTML = `
         ${thumbHtml}
