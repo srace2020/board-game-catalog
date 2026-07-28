@@ -1004,6 +1004,11 @@
   async function fetchViaWorker(ids){
     const url = `${BGG_WORKER_URL}?ids=${ids.join(',')}`;
     const res = await fetchWithRetry429(url, 8000);
+    if (res.status === 429){
+      const err = new Error('still rate-limited after retries');
+      err.rateLimited = true;
+      throw err;
+    }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     if (!text.includes('<item')) throw new Error('unexpected response');
@@ -1033,6 +1038,7 @@
   async function fetchBatchWithRetry(batch, batchIndex){
     const usingWorker = !!BGG_WORKER_URL;
     const attempts = usingWorker ? 2 : 2;
+    let lastErr = null;
     for (let attempt = 0; attempt < attempts; attempt++){
       try {
         if (usingWorker){
@@ -1042,10 +1048,11 @@
           return await fetchViaProxies(targetUrl, batchIndex + attempt);
         }
       } catch (e){
+        lastErr = e;
         if (attempt === 0) await sleep(usingWorker ? 500 : 1200 + Math.random() * 800);
       }
     }
-    return null; // both attempts failed
+    return { failed: true, rateLimited: !!(lastErr && lastErr.rateLimited) };
   }
 
   // run async tasks with a concurrency cap, staggering starts so we don't
@@ -1074,7 +1081,8 @@
     const batches = [];
     for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
 
-    let failedIds = 0;
+    let failedRateLimited = 0; // retryable — just needs BGG to cool down
+    let failedBadIds = 0;      // not retryable — individual stale/merged ids on BGG's end
     let totalProcessed = 0;
     const themeSet = new Set(allThemes);
     // scale concurrency down for very large collections — better to go a bit
@@ -1108,19 +1116,26 @@
 
     // A batch can fail entirely because ONE id in it is stale/merged/invalid —
     // BGG's thing endpoint fails the whole request with no indication of which
-    // id is the problem. So on failure, split the batch in half and retry each
-    // half — this isolates a single bad id instead of losing the whole batch,
-    // and simply retrying the same full batch would fail identically forever.
+    // id is the problem. On a genuine (non-429) failure, split the batch and
+    // retry each half — this isolates a single bad id instead of losing the
+    // whole batch. But if the failure is a rate limit, splitting would only
+    // multiply the number of requests hitting that same limit, so those are
+    // left whole and marked as retryable rather than bisected.
     async function enrichRange(ids, batchIndex){
-      const text = await fetchBatchWithRetry(ids, batchIndex);
-      if (text){
-        applyItemsFromXml(text);
+      const result = await fetchBatchWithRetry(ids, batchIndex);
+      if (typeof result === 'string'){
+        applyItemsFromXml(result);
         totalProcessed += ids.length;
         themeStatus.textContent = `Loaded details for ${totalProcessed}/${idsNeeded.length}...`;
         return;
       }
+      if (result.rateLimited){
+        failedRateLimited += ids.length;
+        totalProcessed += ids.length;
+        return;
+      }
       if (ids.length === 1){
-        failedIds++; // a single id that genuinely won't resolve (likely stale/merged on BGG's end)
+        failedBadIds++; // a single id that genuinely won't resolve (likely stale/merged on BGG's end)
         totalProcessed += 1;
         return;
       }
@@ -1137,9 +1152,12 @@
 
     allThemes = Array.from(themeSet).sort();
     const doneCount = games.filter(g => g.themes).length;
-    enrichBtn.style.display = failedIds ? 'inline-block' : 'none';
-    themeStatus.textContent = failedIds
-      ? `Loaded details for ${doneCount} games (${failedIds} game(s) couldn't be resolved on BGG — likely stale/merged IDs, not retryable)`
+    enrichBtn.style.display = (failedRateLimited || failedBadIds) ? 'inline-block' : 'none';
+    const parts = [];
+    if (failedRateLimited) parts.push(`${failedRateLimited} game(s) skipped due to rate-limiting — click "Retry failed lookups" to try again`);
+    if (failedBadIds) parts.push(`${failedBadIds} game(s) couldn't be resolved on BGG (likely stale/merged IDs — not retryable)`);
+    themeStatus.textContent = parts.length
+      ? `Loaded details for ${doneCount} games (${parts.join('; ')})`
       : `Loaded details for ${doneCount} games`;
     if (allThemes.length) renderThemeChips();
   }
