@@ -428,6 +428,19 @@
     border-radius:50%;
     box-shadow:0 1px 2px #0004;
   }
+  .expansion-badge{
+    position:absolute;
+    top:10px; right:10px;
+    background:var(--ink);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    padding:3px 8px;
+    border-radius:4px;
+    z-index:2;
+  }
   .gcard .gthumb{
     display:block;
     width:100%;
@@ -1219,7 +1232,11 @@
       const thumbHtml = (g.image || g.thumbnail)
         ? `<img class="gthumb" src="${escapeHtml(g.image || g.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(g.thumbnail || '')}';if(!this.src)this.style.display='none';">`
         : '';
+      const expansionBadge = (g.type === 'expansion')
+        ? `<span class="expansion-badge">Expansion</span>`
+        : '';
       card.innerHTML = `
+        ${expansionBadge}
         ${thumbHtml}
         <div class="gname">${escapeHtml(g.name)}</div>
         <div class="grow">
