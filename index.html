@@ -457,7 +457,15 @@
     -webkit-backface-visibility:hidden;
     position:absolute;
     inset:0;
+    /* backface-visibility alone is unreliable in Safari/WebKit when a nested
+       element has its own z-index/box-shadow (like the rating hex) — this
+       visibility toggle, timed to flip exactly at the rotation's midpoint,
+       guarantees the wrong face is truly hidden regardless of that quirk */
+    transition:transform .6s, visibility 0s linear .3s;
+    visibility:visible;
   }
+  .gcard:not(.flipped) .card-back{ visibility:hidden; }
+  .gcard.flipped .card-front{ visibility:hidden; }
   .card-front{
     padding:16px 16px 14px;
     display:flex;
@@ -635,7 +643,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v26</div>
+  <div class="eyebrow">Board Game Collection · build v27</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
