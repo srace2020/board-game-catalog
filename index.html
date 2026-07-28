@@ -445,7 +445,7 @@
   }
   .rating-hex{
     position:absolute;
-    top:10px; left:10px;
+    bottom:8px; left:8px;
     width:42px; height:36px;
     clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
     display:flex;
@@ -458,13 +458,16 @@
     box-shadow:0 1px 3px #0006;
     z-index:2;
   }
+  .gthumb-wrap{
+    position:relative;
+    margin-bottom:10px;
+  }
   .gcard .gthumb{
     display:block;
     width:100%;
     height:120px;
     object-fit:cover;
     border-radius:6px;
-    margin-bottom:10px;
     background:#eee;
   }
   .gcard .gname{
@@ -563,7 +566,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v16</div>
+  <div class="eyebrow">Board Game Collection · build v17</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1421,18 +1424,20 @@ function showDebugError(msg){
       const ownersHtml = (sources.length > 1 && g.owners && g.owners.length)
         ? `<div class="gthemes">${g.owners.map(o => `<span class="owner-tag">${escapeHtml(o)}</span>`).join('')}</div>`
         : '';
-      const thumbHtml = (g.image || g.thumbnail)
-        ? `<img class="gthumb" src="${escapeHtml(g.image || g.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(g.thumbnail || '')}';if(!this.src)this.style.display='none';">`
-        : '';
-      const expansionBadge = (g.type === 'expansion')
-        ? `<span class="expansion-badge">Expansion</span>`
-        : '';
       const ratingHexHtml = (g.rating != null && g.rating > 0)
         ? `<div class="rating-hex" style="background:${ratingColor(g.rating)};">${g.rating.toFixed(1)}</div>`
         : '';
+      const thumbHtml = (g.image || g.thumbnail)
+        ? `<div class="gthumb-wrap">
+             <img class="gthumb" src="${escapeHtml(g.image || g.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(g.thumbnail || '')}';if(!this.src)this.style.display='none';">
+             ${ratingHexHtml}
+           </div>`
+        : ratingHexHtml; // no image? just show the hex badge inline instead of losing it
+      const expansionBadge = (g.type === 'expansion')
+        ? `<span class="expansion-badge">Expansion</span>`
+        : '';
       card.innerHTML = `
         ${expansionBadge}
-        ${ratingHexHtml}
         ${thumbHtml}
         <div class="gname">${escapeHtml(g.name)}</div>
         <div class="grow">
