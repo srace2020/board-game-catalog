@@ -548,7 +548,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v12</div>
+  <div class="eyebrow">Board Game Collection · build v13</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -680,4 +680,721 @@
 </div>
 
 <footer>
-  <img class="bgg-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXAAAABsCAYAAABzeulrAAAACXBIWXMAAC4jAAAuIwF4pT92AAAPLElEQVR4nO2du49bxxWHZzfbucimcWuqNyC5CsCC2k2dwFTldJTcG5ZTpQksIU2qyIL/AC27pBKNpI4oFQJcmQHcm27dWCnSMdpgqKF0dXfOPO6cuXzo+wBBwC73cu48fnPmzDkzBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKpx9K5V7WpsTo0xY2PMzZOZubMDRQIA6MTJu1Jtq7E5M8ZMnHhbEb+/A8UCAOjMQQv4amwGxpjPnWgPGr96YYz5aotFAwAo5uAEvOEiscJ9Q/jY7GS2FnEAgL3lYAR8NV6L9sZFEgP3CQDsPXst4Kvx2sK2on3b+bVTuDiZmeV2Sw4AUM7eCbjza29cJIOEP2kzrVtCAIB+2AsBb/i1P050kUjMT2ZmXre0AAD9sNMC7gn9K+Xhdt8IAECPnUvkCYT+lbI8mZlr23krAAB9dsICTwz9K4XIEwA4KLZqgWeG/pWA9Q0AB0fvFnjH0L9SiDwBgIOjFwFXCP0rgbR5ADhIqgm4YuhfKRfNtHkX2XLmynWLpB4A2FfUfeAVQv9KOXcbozedcL8u08ns3TtOFwAOBxULvGLoX5CjazeMeX9gLr+dhT72RPg5ljcA7DVFAu6iSL6sGPonYsX7+I+Pzf/+8FHXRyDgALDXHBcW/uNtiLd579Qc//mJuXwyNea/nU+FRcABYK8pFfAfe395J972/5f/uih5Uv9lBwBQpFTA+7VinXhb98mlFe+fir4eCxwA9pr9EfCGeFte/r04Mx4BB4C9Zj8EvCXel9/PS61vg4ADwL5TJOC9JMG0xNtyWW5991N2AICKlFrgpqol6xPv7+evLPAyuNAYAPaenRbw408fvCXelnXoYDmLWmUGAOgLjUzMKgJ+/Nkjc/Sb22//8Kflq+iTctQt8NFwcs8lNXXF1uOtZ8+nVyaX0XBiE6YeFGS5zt2z33rv0XByKXz+/Nnz6bz12Z89RyN89ez59IvW52w573qeab9/1vhcaX3df/Z8eq/9Q6GcOSxcWb39ejSc/FCSbfzs+fTK8Q2j4eQskDEcw7bTF75+sw+MhhM7
+  <img class="bgg-logo" src="data:image/png;base64,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" alt="Powered by BGG">
+  <p>Runs entirely in your browser. Collection and game data is fetched live from BGG via your own Cloudflare Worker — nothing is stored on any server.</p>
+</footer>
+
+<script>
+// on-page error banner — catches anything that would otherwise fail silently,
+// so a real error message is visible even without access to DevTools (mobile).
+window.addEventListener('error', function(e){
+  showDebugError('JS error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
+});
+window.addEventListener('unhandledrejection', function(e){
+  showDebugError('Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+});
+function showDebugError(msg){
+  let el = document.getElementById('debugErrorBanner');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'debugErrorBanner';
+    el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#8a1f1f;color:#fff;padding:14px 18px;font-family:monospace;font-size:13px;z-index:99999;max-height:40vh;overflow-y:auto;box-shadow:0 -2px 10px #0008;';
+    document.body.appendChild(el);
+  }
+  const line = document.createElement('div');
+  line.style.marginTop = '6px';
+  line.textContent = msg;
+  el.appendChild(line);
+}
+(function(){
+  // ↓↓↓ PASTE YOUR CLOUDFLARE WORKER URL BETWEEN THESE QUOTES — this is the only line to edit ↓↓↓
+  const BGG_WORKER_URL = 'https://bgg-worker.stephen-race.workers.dev';
+
+  let sources = [];      // [{ id, ownerName, username, rawGames: [...] }] one entry per loaded BGG account
+  let games = [];        // merged view across all sources, each with an `owners` array
+  let activeThemes = new Set();
+  let allThemes = [];
+  let activeOwners = new Set();
+  let isEnriching = false; // when true, hold off showing any results until enrichment fully finishes
+
+  const workerWarning = document.getElementById('workerWarning');
+  const usernameInput = document.getElementById('usernameInput');
+  const addUsernameBtn = document.getElementById('addUsernameBtn');
+  const usernameStatus = document.getElementById('usernameStatus');
+  const sourcesBox = document.getElementById('sourcesBox');
+  const sourcesList = document.getElementById('sourcesList');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const panel = document.getElementById('panel');
+  const resultsBar = document.getElementById('resultsBar');
+  const loadingMsg = document.getElementById('loadingMsg');
+  const grid = document.getElementById('grid');
+  const noResults = document.getElementById('noResults');
+  const resultCount = document.getElementById('resultCount');
+  const downloadRow = document.getElementById('downloadRow');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const playerCountSel = document.getElementById('playerCount');
+  const weightMin = document.getElementById('weightMin');
+  const weightMax = document.getElementById('weightMax');
+  const ratingMin = document.getElementById('ratingMin');
+  const searchBox = document.getElementById('searchBox');
+  const modeInclude = document.getElementById('modeInclude');
+  const modeExclude = document.getElementById('modeExclude');
+  let searchMode = 'include';
+  const excludeExpansions = document.getElementById('excludeExpansions');
+  const excludeUnrated = document.getElementById('excludeUnrated');
+  const sortBy = document.getElementById('sortBy');
+  const enrichBtn = document.getElementById('enrichBtn');
+  const themeStatus = document.getElementById('themeStatus');
+  const themeArea = document.getElementById('themeArea');
+  const ownerBox = document.getElementById('ownerBox');
+  const ownerArea = document.getElementById('ownerArea');
+  const onlySharedGames = document.getElementById('onlySharedGames');
+
+  // ---------- username-based collection loading ----------
+  if (!BGG_WORKER_URL) {
+    workerWarning.style.display = 'block';
+    addUsernameBtn.disabled = true;
+    usernameInput.disabled = true;
+  }
+
+  addUsernameBtn.addEventListener('click', addUsername);
+  usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addUsername(); });
+
+  clearAllBtn.addEventListener('click', () => {
+    sources = [];
+    games = [];
+    activeThemes = new Set();
+    activeOwners = new Set();
+    allThemes = [];
+    sourcesBox.style.display = 'none';
+    sourcesList.innerHTML = '';
+    panel.classList.remove('show');
+    ownerBox.style.display = 'none';
+    resultsBar.style.display = 'none';
+    downloadRow.style.display = 'none';
+    grid.innerHTML = '';
+    usernameStatus.textContent = '';
+    usernameStatus.classList.remove('error');
+    enrichBtn.style.display = 'none';
+    themeStatus.textContent = '';
+  });
+
+  async function addUsername(){
+    usernameInput.blur(); // dismiss mobile keyboard immediately so status feedback below is visible
+    const username = usernameInput.value.trim();
+    if (!username){
+      showUsernameStatus('Type a BGG username first.', true);
+      return;
+    }
+    if (sources.some(s => s.username.toLowerCase() === username.toLowerCase())){
+      showUsernameStatus(`"${username}" is already loaded.`, true);
+      return;
+    }
+
+    addUsernameBtn.disabled = true;
+    showUsernameStatus(`Looking up ${username}'s collection... (BGG can take a few seconds to respond)`, false);
+
+    try {
+      const rawGames = await fetchCollection(username);
+      if (!rawGames.length){
+        showUsernameStatus(`No public board game collection found for "${username}" — check the spelling, or that their BGG collection is set to public.`, true);
+        return;
+      }
+      sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName: username, username, rawGames });
+      usernameInput.value = '';
+      isEnriching = true;
+      onSourcesChanged();
+      showUsernameStatus(`Loaded ${rawGames.length} games for ${username}. Fetching weight & theme data from BGG before showing results...`, false);
+      await enrichAllGames();
+      isEnriching = false;
+      setDefaultRanges();
+      render();
+      showUsernameStatus(`${username}'s collection is ready.`, false);
+    } catch (e){
+      showUsernameStatus(`Couldn't load "${username}": ${e.message}`, true);
+    } finally {
+      addUsernameBtn.disabled = false;
+    }
+  }
+
+  function showUsernameStatus(msg, isError){
+    usernameStatus.textContent = msg;
+    usernameStatus.classList.toggle('error', !!isError);
+    usernameStatus.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  // fetch a user's public collection from BGG via the Worker — both base games
+  // and expansions, so the "exclude expansions" filter has something to act on.
+  // Player counts and community rating come from here; weight/categories are
+  // filled in separately by enrichAllGames since BGG's collection endpoint omits them.
+  async function fetchCollection(username){
+    const [boardgames, expansions] = await Promise.all([
+      fetchCollectionSubtype(username, 'boardgame'),
+      fetchCollectionSubtype(username, 'boardgameexpansion')
+    ]);
+    const seen = new Set();
+    const out = [];
+    [...boardgames, ...expansions].forEach(g => {
+      if (seen.has(g.id)) return;
+      seen.add(g.id);
+      out.push(g);
+    });
+    return out;
+  }
+
+  async function fetchCollectionSubtype(username, subtype){
+    const url = `${BGG_WORKER_URL}?username=${encodeURIComponent(username)}&subtype=${subtype}`;
+    const res = await fetchWithRetry429(url, 25000, 6);
+    if (res.status === 429) throw new Error('BGG is rate-limiting requests right now — wait a minute and try again');
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' from your Worker');
+    const text = await res.text();
+    if (/invalid username/i.test(text)) throw new Error('BGG says this username doesn\'t exist');
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    const items = Array.from(xml.querySelectorAll('item'));
+    const out = [];
+    const seen = new Set();
+    items.forEach(item => {
+      const id = item.getAttribute('objectid');
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      const nameEl = item.querySelector('name');
+      const name = nameEl ? nameEl.textContent : null;
+      if (!name) return;
+      const statsEl = item.querySelector('stats');
+      const min = statsEl && statsEl.getAttribute('minplayers') ? Number(statsEl.getAttribute('minplayers')) : null;
+      const max = statsEl && statsEl.getAttribute('maxplayers') ? Number(statsEl.getAttribute('maxplayers')) : null;
+      const avgEl = statsEl ? statsEl.querySelector('rating > average') : null;
+      const ratingVal = avgEl ? Number(avgEl.getAttribute('value')) : null;
+      const yearEl = item.querySelector('yearpublished');
+      const itemSubtype = item.getAttribute('subtype');
+      const thumbEl = item.querySelector('thumbnail');
+      const imageEl = item.querySelector('image'); // full-resolution version, much sharper than thumbnail
+      out.push({
+        name: String(name),
+        id: id,
+        min: min, max: max,
+        weight: null, // filled in by enrichAllGames
+        rating: (ratingVal && ratingVal > 0) ? ratingVal : null,
+        type: itemSubtype === 'boardgameexpansion' ? 'expansion' : 'standalone',
+        year: yearEl ? yearEl.textContent : null,
+        image: imageEl ? imageEl.textContent.trim() : null,
+        thumbnail: thumbEl ? thumbEl.textContent.trim() : null,
+        themes: null
+      });
+    });
+    return out;
+  }
+
+  function onSourcesChanged(){
+    mergeSources();
+    renderSourcesList();
+    sourcesBox.style.display = sources.length ? 'block' : 'none';
+    panel.classList.toggle('show', games.length > 0);
+    ownerBox.style.display = sources.length > 1 ? 'block' : 'none';
+    resultsBar.style.display = games.length ? 'flex' : 'none';
+    if (sources.length > 1) renderOwnerChips();
+    buildPlayerOptions();
+    setDefaultRanges();
+    render();
+  }
+
+  function renderSourcesList(){
+    sourcesList.innerHTML = '';
+    sources.forEach(src => {
+      const chip = document.createElement('div');
+      chip.className = 'source-chip';
+      chip.innerHTML = `<span>${escapeHtml(src.ownerName)}</span><span class="src-count">${src.rawGames.length} games</span>`;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'src-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = `Remove ${src.ownerName}'s collection`;
+      removeBtn.addEventListener('click', () => {
+        sources = sources.filter(s => s.id !== src.id);
+        activeOwners.delete(src.ownerName);
+        onSourcesChanged();
+      });
+      chip.appendChild(removeBtn);
+      sourcesList.appendChild(chip);
+    });
+  }
+
+  function renderOwnerChips(){
+    const owners = sources.map(s => s.ownerName);
+    ownerArea.innerHTML = '';
+    owners.forEach(owner => {
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (activeOwners.has(owner) ? ' active' : '');
+      chip.textContent = owner;
+      chip.addEventListener('click', () => {
+        if (activeOwners.has(owner)) activeOwners.delete(owner);
+        else activeOwners.add(owner);
+        chip.classList.toggle('active');
+        render();
+      });
+      ownerArea.appendChild(chip);
+    });
+  }
+
+  // merge every source's games into one library, tracking who owns each copy.
+  // games are matched by BGG objectid so the same game owned by two people
+  // becomes one entry tagged with both owners.
+  function mergeSources(){
+    const merged = new Map(); // key -> game record
+    sources.forEach(src => {
+      src.rawGames.forEach(g => {
+        const key = String(g.id);
+        if (!merged.has(key)){
+          merged.set(key, { ...g, owners: [src.ownerName] });
+        } else {
+          const existing = merged.get(key);
+          if (!existing.owners.includes(src.ownerName)) existing.owners.push(src.ownerName);
+          // keep whichever copy already has weight/themes filled in, if either does
+          if (!existing.weight && g.weight) existing.weight = g.weight;
+          if (!existing.themes && g.themes) existing.themes = g.themes;
+          if (!existing.thumbnail && g.thumbnail) existing.thumbnail = g.thumbnail;
+          if (!existing.image && g.image) existing.image = g.image;
+        }
+      });
+    });
+    games = Array.from(merged.values());
+  }
+
+  function buildPlayerOptions(){
+    playerCountSel.innerHTML = '<option value="">Any</option>';
+    let maxSeen = 0;
+    games.forEach(g => { if (g.max && g.max > maxSeen && g.max <= 20) maxSeen = g.max; });
+    for (let n = 1; n <= Math.max(maxSeen, 8); n++){
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      playerCountSel.appendChild(opt);
+    }
+  }
+
+  function setDefaultRanges(){
+    const weights = games.map(g => g.weight).filter(w => w != null && w > 0);
+    if (weights.length){
+      weightMin.value = Math.floor(Math.min(...weights) * 10) / 10;
+      weightMax.value = Math.ceil(Math.max(...weights) * 10) / 10;
+    } else {
+      weightMin.value = 1; weightMax.value = 5;
+    }
+    ratingMin.value = 0;
+  }
+
+  onlySharedGames.addEventListener('change', render);
+
+
+  // ---------- data enrichment (weight + categories, via BGG's live API) ----------
+  enrichBtn.addEventListener('click', enrichAllGames);
+
+  const CORS_PROXIES = [
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+    url => `https://thingproxy.freeboard.io/fetch/${url}`
+  ];
+
+  async function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // shared across every request: when ANY call gets a 429, everyone else
+  // (in-flight or about to start) waits out the same cooldown instead of
+  // each request backing off independently and re-triggering the limit in
+  // overlapping waves — this matters a lot once a collection has hundreds
+  // of enrichment batches firing with concurrency.
+  let rateLimitCooldownUntil = 0;
+
+  async function waitForCooldown(){
+    const remaining = rateLimitCooldownUntil - Date.now();
+    if (remaining > 0) await sleep(remaining);
+  }
+
+  function setCooldown(ms){
+    rateLimitCooldownUntil = Math.max(rateLimitCooldownUntil, Date.now() + ms);
+  }
+
+  // fetch with automatic backoff specifically for HTTP 429 (rate limited) —
+  // respects a Retry-After header if BGG/the Worker sends one, otherwise
+  // backs off exponentially, and shares that cooldown with every other
+  // in-flight request. Other error statuses are returned immediately since
+  // retrying won't help those.
+  async function fetchWithRetry429(url, timeoutMs, maxRetries){
+    maxRetries = maxRetries ?? 5;
+    let res;
+    for (let attempt = 0; attempt <= maxRetries; attempt++){
+      await waitForCooldown();
+      res = await fetchWithTimeout(url, timeoutMs);
+      if (res.status !== 429) return res;
+      const retryAfter = res.headers.get('Retry-After');
+      const waitMs = retryAfter ? Number(retryAfter) * 1000 : (1000 * Math.pow(2, attempt)) + Math.random() * 400;
+      setCooldown(waitMs);
+      if (attempt < maxRetries) await waitForCooldown();
+    }
+    return res; // still 429 after all retries
+  }
+
+  // if a personal Worker URL is configured, use it directly — it's not shared
+  // with anyone else, so no rotation/backoff dance is needed, just a retry.
+  async function fetchViaWorker(ids){
+    const url = `${BGG_WORKER_URL}?ids=${ids.join(',')}`;
+    const res = await fetchWithRetry429(url, 8000);
+    if (res.status === 429){
+      const err = new Error('still rate-limited after retries');
+      err.rateLimited = true;
+      throw err;
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (!text.includes('<item')) throw new Error('unexpected response');
+    return text;
+  }
+
+  // rotate which proxy goes first per batch, so load spreads out instead of
+  // every batch hammering the same proxy first and tripping its rate limit
+  async function fetchViaProxies(targetUrl, startIndex){
+    let lastErr = null;
+    for (let k = 0; k < CORS_PROXIES.length; k++){
+      const buildProxyUrl = CORS_PROXIES[(startIndex + k) % CORS_PROXIES.length];
+      try {
+        const res = await fetchWithTimeout(buildProxyUrl(targetUrl), 7000);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        if (!text.includes('<item')) throw new Error('unexpected response');
+        return text;
+      } catch (e){
+        lastErr = e;
+        continue;
+      }
+    }
+    throw lastErr || new Error('all proxies failed');
+  }
+
+  async function fetchBatchWithRetry(batch, batchIndex){
+    const usingWorker = !!BGG_WORKER_URL;
+    const attempts = usingWorker ? 2 : 2;
+    let lastErr = null;
+    for (let attempt = 0; attempt < attempts; attempt++){
+      try {
+        if (usingWorker){
+          return await fetchViaWorker(batch);
+        } else {
+          const targetUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${batch.join(',')}&stats=1`;
+          return await fetchViaProxies(targetUrl, batchIndex + attempt);
+        }
+      } catch (e){
+        lastErr = e;
+        if (attempt === 0) await sleep(usingWorker ? 500 : 1200 + Math.random() * 800);
+      }
+    }
+    return { failed: true, rateLimited: !!(lastErr && lastErr.rateLimited) };
+  }
+
+  // run async tasks with a concurrency cap, staggering starts so we don't
+  // slam every proxy with a burst of simultaneous requests
+  async function runPool(items, concurrency, worker){
+    let idx = 0;
+    let completed = 0;
+    async function runNext(slot){
+      await sleep(slot * 250); // stagger this worker's first request
+      while (idx < items.length){
+        const i = idx++;
+        await worker(items[i], i);
+        completed++;
+        themeStatus.textContent = `Fetching batch ${completed}/${items.length}...`;
+      }
+    }
+    const slots = Math.min(concurrency, items.length);
+    await Promise.all(Array.from({ length: slots }, (_, slot) => runNext(slot)));
+  }
+
+  async function enrichAllGames(pass){
+    pass = pass || 1;
+    const idsNeeded = games.filter(g => g.weight == null).map(g => g.id).filter(Boolean);
+    if (!idsNeeded.length) return;
+    if (pass > 1) themeStatus.textContent = `Retrying rate-limited games (pass ${pass})...`;
+
+    const batchSize = 40; // bigger batches = fewer total requests for large collections
+    const batches = [];
+    for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
+
+    let failedRateLimited = 0; // retryable — just needs BGG to cool down
+    let failedBadIds = 0;      // not retryable — individual stale/merged ids on BGG's end
+    let totalProcessed = 0;
+    const themeSet = new Set(allThemes);
+    // scale concurrency down for very large collections — better to go a bit
+    // slower than to trip the rate limit repeatedly across hundreds of batches
+    let concurrency = BGG_WORKER_URL ? 6 : 3;
+    if (batches.length > 30) concurrency = Math.min(concurrency, 3);
+
+    function applyItemsFromXml(text){
+      const xml = new DOMParser().parseFromString(text, 'text/xml');
+      const items = xml.querySelectorAll('item');
+      items.forEach(item => {
+        const id = item.getAttribute('id');
+        const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
+          .map(l => l.getAttribute('value'));
+        const weightEl = item.querySelector('statistics ratings averageweight');
+        const weightVal = weightEl ? Number(weightEl.getAttribute('value')) : null;
+        // BGG's collection endpoint is known to mistag some expansions as
+        // "boardgame" — the thing endpoint's own top-level type is accurate,
+        // so use it to correct the classification we guessed earlier.
+        const trueType = item.getAttribute('type');
+        const g = games.find(gm => String(gm.id) === String(id));
+        if (g){
+          g.themes = cats;
+          if (weightVal && weightVal > 0) g.weight = weightVal;
+          if (trueType) g.type = trueType === 'boardgameexpansion' ? 'expansion' : 'standalone';
+          cats.forEach(c => themeSet.add(c));
+        }
+      });
+      return items.length;
+    }
+
+    // A batch can fail entirely because ONE id in it is stale/merged/invalid —
+    // BGG's thing endpoint fails the whole request with no indication of which
+    // id is the problem. On a genuine (non-429) failure, split the batch and
+    // retry each half — this isolates a single bad id instead of losing the
+    // whole batch. But if the failure is a rate limit, splitting would only
+    // multiply the number of requests hitting that same limit, so those are
+    // left whole and marked as retryable rather than bisected.
+    async function enrichRange(ids, batchIndex){
+      const result = await fetchBatchWithRetry(ids, batchIndex);
+      if (typeof result === 'string'){
+        applyItemsFromXml(result);
+        totalProcessed += ids.length;
+        themeStatus.textContent = `Loaded details for ${totalProcessed}/${idsNeeded.length}...`;
+        return;
+      }
+      if (result.rateLimited){
+        failedRateLimited += ids.length;
+        totalProcessed += ids.length;
+        return;
+      }
+      if (ids.length === 1){
+        failedBadIds++; // a single id that genuinely won't resolve (likely stale/merged on BGG's end)
+        totalProcessed += 1;
+        return;
+      }
+      const mid = Math.ceil(ids.length / 2);
+      await Promise.all([
+        enrichRange(ids.slice(0, mid), batchIndex),
+        enrichRange(ids.slice(mid), batchIndex + 1)
+      ]);
+    }
+
+    await runPool(batches, concurrency, async (batch, batchIndex) => {
+      await enrichRange(batch, batchIndex);
+    });
+
+    allThemes = Array.from(themeSet).sort();
+    render(); // reflect newly-corrected weight/theme/expansion data as each pass completes
+
+    const doneCount = games.filter(g => g.themes).length;
+    const MAX_AUTO_PASSES = 4;
+
+    if (failedRateLimited > 0 && pass < MAX_AUTO_PASSES){
+      themeStatus.textContent = `Loaded ${doneCount} so far — pausing briefly before retrying ${failedRateLimited} rate-limited game(s) (pass ${pass}/${MAX_AUTO_PASSES})...`;
+      await sleep(5000 * pass); // give BGG progressively more breathing room each pass
+      await enrichAllGames(pass + 1);
+      return;
+    }
+
+    enrichBtn.style.display = (failedRateLimited || failedBadIds) ? 'inline-block' : 'none';
+    const parts = [];
+    if (failedRateLimited) parts.push(`${failedRateLimited} game(s) still rate-limited after ${pass} automatic passes — click "Retry failed lookups" to try again`);
+    if (failedBadIds) parts.push(`${failedBadIds} game(s) couldn't be resolved on BGG (likely stale/merged IDs — not retryable)`);
+    themeStatus.textContent = parts.length
+      ? `Loaded details for ${doneCount} games (${parts.join('; ')})`
+      : `Loaded details for ${doneCount} games`;
+    if (allThemes.length) renderThemeChips();
+    render();
+  }
+
+  function renderThemeChips(){
+    if (!allThemes.length){
+      themeArea.innerHTML = '<p class="theme-empty">No category data came back for these games.</p>';
+      return;
+    }
+    themeArea.innerHTML = '';
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'theme-chips';
+    allThemes.forEach(theme => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = theme;
+      chip.addEventListener('click', () => {
+        if (activeThemes.has(theme)) activeThemes.delete(theme);
+        else activeThemes.add(theme);
+        chip.classList.toggle('active');
+        render();
+      });
+      chipWrap.appendChild(chip);
+    });
+    themeArea.appendChild(chipWrap);
+  }
+
+  // ---------- filtering + rendering ----------
+  [modeInclude, modeExclude].forEach(btn => {
+    btn.addEventListener('click', () => {
+      searchMode = btn.dataset.mode;
+      modeInclude.classList.toggle('active', searchMode === 'include');
+      modeExclude.classList.toggle('active', searchMode === 'exclude');
+      render();
+    });
+  });
+
+  [playerCountSel, weightMin, weightMax, ratingMin, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
+    el.addEventListener('input', render);
+    el.addEventListener('change', render);
+  });
+
+  function getFiltered(){
+    const n = playerCountSel.value ? Number(playerCountSel.value) : null;
+    const wMin = weightMin.value !== '' ? Number(weightMin.value) : null;
+    const wMax = weightMax.value !== '' ? Number(weightMax.value) : null;
+    const rMin = ratingMin.value !== '' ? Number(ratingMin.value) : 0;
+    const q = searchBox.value.trim().toLowerCase();
+
+    let out = games.filter(g => {
+      if (excludeExpansions.checked && g.type && g.type.toLowerCase() === 'expansion') return false;
+      if (n != null){
+        if (g.min == null || g.max == null) return false;
+        if (!(g.min <= n && g.max >= n)) return false;
+      }
+      if (excludeUnrated.checked && (g.weight == null || g.weight <= 0)) return false;
+      if (g.weight != null && g.weight > 0){
+        if (wMin != null && g.weight < wMin) return false;
+        if (wMax != null && g.weight > wMax) return false;
+      }
+      if (g.rating != null && rMin != null && g.rating < rMin) return false;
+      if (q){
+        const matches = g.name.toLowerCase().includes(q);
+        if (searchMode === 'include' && !matches) return false;
+        if (searchMode === 'exclude' && matches) return false;
+      }
+      if (activeThemes.size > 0){
+        if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
+      }
+      if (activeOwners.size > 0){
+        if (!g.owners.some(o => activeOwners.has(o))) return false;
+      }
+      if (onlySharedGames.checked && g.owners.length < 2) return false;
+      return true;
+    });
+
+    const [key, dir] = sortBy.value.split('-');
+    out.sort((a, b) => {
+      let av, bv;
+      if (key === 'weight'){ av = a.weight ?? 999; bv = b.weight ?? 999; }
+      else if (key === 'rating'){ av = a.rating ?? -1; bv = b.rating ?? -1; }
+      else { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return out;
+  }
+
+  function render(){
+    if (isEnriching){
+      grid.innerHTML = '';
+      noResults.style.display = 'none';
+      downloadRow.style.display = 'none';
+      loadingMsg.style.display = 'block';
+      resultsBar.style.display = 'none';
+      return;
+    }
+    loadingMsg.style.display = 'none';
+
+    const filtered = getFiltered();
+    resultCount.textContent = filtered.length;
+    grid.innerHTML = '';
+
+    if (!filtered.length){
+      noResults.style.display = 'block';
+      downloadRow.style.display = 'none';
+      return;
+    }
+    noResults.style.display = 'none';
+    downloadRow.style.display = games.length ? 'block' : 'none';
+
+    filtered.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      const players = (g.min != null && g.max != null) ? `${g.min}–${g.max} players` : 'players n/a';
+      const weight = (g.weight != null && g.weight > 0) ? g.weight.toFixed(2) : '—';
+      const rating = (g.rating != null && g.rating > 0) ? g.rating.toFixed(2) : '—';
+      const themesHtml = (g.themes && g.themes.length)
+        ? `<div class="gthemes">${g.themes.slice(0,4).map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+      const ownersHtml = (sources.length > 1 && g.owners && g.owners.length)
+        ? `<div class="gthemes">${g.owners.map(o => `<span class="owner-tag">${escapeHtml(o)}</span>`).join('')}</div>`
+        : '';
+      const thumbHtml = (g.image || g.thumbnail)
+        ? `<img class="gthumb" src="${escapeHtml(g.image || g.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${escapeHtml(g.thumbnail || '')}';if(!this.src)this.style.display='none';">`
+        : '';
+      const expansionBadge = (g.type === 'expansion')
+        ? `<span class="expansion-badge">Expansion</span>`
+        : '';
+      card.innerHTML = `
+        ${expansionBadge}
+        ${thumbHtml}
+        <div class="gname">${escapeHtml(g.name)}</div>
+        <div class="grow">
+          <span>${players}</span>
+          <span><b>${weight}</b> wt</span>
+          <span><b>${rating}</b> ★</span>
+        </div>
+        ${ownersHtml}
+        ${themesHtml}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- download filtered CSV ----------
+  downloadBtn.addEventListener('click', () => {
+    const filtered = getFiltered();
+    const header = ['name','minplayers','maxplayers','weight','rating','owners','themes'];
+    const rows = filtered.map(g => [
+      g.name,
+      g.min ?? '',
+      g.max ?? '',
+      g.weight ?? '',
+      g.rating ?? '',
+      g.owners ? g.owners.join('; ') : '',
+      g.themes ? g.themes.join('; ') : ''
+    ]);
+    const csv = [header, ...rows].map(r =>
+      r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'filtered-collection.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+})();
+</script>
+
+</body>
+</html>
