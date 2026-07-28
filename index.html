@@ -433,26 +433,71 @@
     gap:16px;
   }
   .gcard{
+    perspective:1200px;
+    cursor:pointer;
+    min-height:150px;
+  }
+  .card-flip-inner{
+    position:relative;
+    width:100%;
+    height:100%;
+    transition:transform .6s;
+    transform-style:preserve-3d;
+  }
+  .gcard.flipped .card-flip-inner{
+    transform:rotateY(180deg);
+  }
+  .card-front, .card-back{
     background:var(--card);
     color:var(--ink);
     border-radius:4px 4px 8px 8px;
     box-shadow:0 6px 14px var(--card-shadow);
+    border-top:8px solid var(--brick);
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+  .card-front{
     padding:16px 16px 14px;
     position:relative;
-    border-top:8px solid var(--brick);
     display:flex;
     flex-direction:column;
-    min-height:150px;
   }
-  .gcard::before{
-    content:"";
+  .card-back{
     position:absolute;
-    top:-6px; left:20px;
-    width:14px;height:14px;
-    background:var(--gold);
-    border-radius:50%;
-    box-shadow:0 1px 2px #0004;
+    inset:0;
+    transform:rotateY(180deg);
+    padding:16px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
   }
+  .card-back-title{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    margin:0;
+  }
+  .card-back-desc{
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--ink-soft);
+    white-space:pre-wrap;
+  }
+  .card-back-meta{
+    font-size:11px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .card-back-hint{
+    margin-top:auto;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    font-style:italic;
+    text-align:center;
+    padding-top:8px;
+  }
+  /* decorative pin-dot removed — redundant clutter now that rating hex + expansion badges carry the visual interest */
   .expansion-badge{
     position:absolute;
     top:10px; right:10px;
@@ -590,7 +635,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v21</div>
+  <div class="eyebrow">Board Game Collection · build v25</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -689,6 +734,7 @@
     <div class="theme-box" id="mechanicBox" style="display:none;">
       <div class="theme-head">
         <span class="lbl">Mechanics</span>
+        <span class="theme-status" id="mechanicStatus"></span>
       </div>
       <input type="text" id="mechanicSearchInput" class="chip-search" placeholder="Filter mechanics (e.g. dice)">
       <div id="mechanicArea"></div>
@@ -805,6 +851,7 @@ function showDebugError(msg){
   const themeSearchInput = document.getElementById('themeSearchInput');
   const mechanicSearchInput = document.getElementById('mechanicSearchInput');
   const mechanicArea = document.getElementById('mechanicArea');
+  const mechanicStatus = document.getElementById('mechanicStatus');
   const ownerBox = document.getElementById('ownerBox');
   const ownerArea = document.getElementById('ownerArea');
   const onlySharedGames = document.getElementById('onlySharedGames');
@@ -1252,6 +1299,8 @@ function showDebugError(msg){
           g.weight = cached.weight;
           g.themes = cached.themes;
           g.mechanics = cached.mechanics || [];
+          g.description = cached.description || '';
+          if (cached.year) g.year = cached.year;
           if (cached.type) g.type = cached.type;
           cached.themes.forEach(c => allThemes.includes(c) || allThemes.push(c));
           (cached.mechanics || []).forEach(m => allMechanics.includes(m) || allMechanics.push(m));
@@ -1294,6 +1343,10 @@ function showDebugError(msg){
           .map(l => l.getAttribute('value'));
         const weightEl = item.querySelector('statistics ratings averageweight');
         const weightVal = weightEl ? Number(weightEl.getAttribute('value')) : null;
+        const descEl = item.querySelector('description');
+        const description = descEl ? cleanDescription(descEl.textContent) : '';
+        const yearEl = item.querySelector('yearpublished');
+        const year = yearEl ? yearEl.getAttribute('value') : null;
         // BGG's collection endpoint is known to mistag some expansions as
         // "boardgame" — the thing endpoint's own top-level type is accurate,
         // so use it to correct the classification we guessed earlier.
@@ -1302,6 +1355,8 @@ function showDebugError(msg){
         if (g){
           g.themes = cats;
           g.mechanics = mechanics;
+          g.description = description;
+          if (year) g.year = year;
           if (weightVal && weightVal > 0) g.weight = weightVal;
           if (trueType) g.type = trueType === 'boardgameexpansion' ? 'expansion' : 'standalone';
           cats.forEach(c => themeSet.add(c));
@@ -1309,7 +1364,7 @@ function showDebugError(msg){
           // only cache once we actually have a real weight — a game with no
           // weight yet might just be lightly-rated on BGG (retry-worthy),
           // not permanently un-enrichable, so don't lock in a null forever
-          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type });
+          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type, description: g.description, year: g.year });
         }
       });
       return items.length;
@@ -1372,6 +1427,8 @@ function showDebugError(msg){
     themeStatus.textContent = parts.length
       ? `Loaded details for ${doneCount} games (${parts.join('; ')})`
       : `Loaded details for ${doneCount} games`;
+    const withMechanics = games.filter(g => g.mechanics && g.mechanics.length).length;
+    mechanicStatus.textContent = `${withMechanics}/${games.length} games have mechanics data`;
     if (allThemes.length) renderThemeChips();
     if (allMechanics.length) renderMechanicChips();
     render();
@@ -1389,7 +1446,11 @@ function showDebugError(msg){
     // only offer categories actually present among games that pass every
     // OTHER active filter — so the list doesn't show options that would
     // return zero results given what's already selected
-    const reachableGames = getFiltered({ skipThemes: true });
+    // reachability is based on the FULLY filtered set (including any themes
+    // already selected) so picking one option genuinely narrows the rest —
+    // e.g. selecting Horror should hide categories that don't co-occur with
+    // any Horror game, not just ones blocked by unrelated filters
+    const reachableGames = getFiltered();
     const reachableThemes = new Set();
     reachableGames.forEach(g => (g.themes || []).forEach(t => reachableThemes.add(t)));
 
@@ -1421,7 +1482,9 @@ function showDebugError(msg){
       return;
     }
     const query = mechanicSearchInput.value.trim().toLowerCase();
-    const reachableGames = getFiltered({ skipMechanics: true });
+    // same reasoning as theme chips: reachability reflects the fully active
+    // filter set so selections cascade and narrow each other
+    const reachableGames = getFiltered();
     const reachableMechanics = new Set();
     reachableGames.forEach(g => (g.mechanics || []).forEach(m => reachableMechanics.add(m)));
 
@@ -1550,7 +1613,6 @@ function showDebugError(msg){
       card.className = 'gcard';
       const players = (g.min != null && g.max != null) ? `${g.min}–${g.max} players` : 'players n/a';
       const weight = (g.weight != null && g.weight > 0) ? g.weight.toFixed(2) : '—';
-      const rating = (g.rating != null && g.rating > 0) ? g.rating.toFixed(2) : '—';
       const themesHtml = (g.themes && g.themes.length)
         ? `<div class="gthemes">${g.themes.slice(0,4).map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
         : '';
@@ -1558,7 +1620,7 @@ function showDebugError(msg){
         ? `<div class="gthemes">${g.owners.map(o => `<span class="owner-tag">${escapeHtml(o)}</span>`).join('')}</div>`
         : '';
       const ratingHexHtml = (g.rating != null && g.rating > 0)
-        ? `<div class="rating-hex" style="background:${ratingColor(g.rating)};">${g.rating.toFixed(1)}</div>`
+        ? (() => { const displayRating = Number(g.rating.toFixed(1)); return `<div class="rating-hex" style="background:${ratingColor(displayRating)};">${displayRating.toFixed(1)}</div>`; })()
         : '';
       const thumbHtml = (g.image || g.thumbnail)
         ? `<div class="gthumb-wrap">
@@ -1569,25 +1631,60 @@ function showDebugError(msg){
       const expansionBadge = (g.type === 'expansion')
         ? `<span class="expansion-badge">Expansion</span>`
         : '';
+
+      // ---- back face: full description + everything that didn't fit up front ----
+      const descHtml = g.description
+        ? `<div class="card-back-desc">${escapeHtml(g.description)}</div>`
+        : `<div class="card-back-desc" style="font-style:italic;">No description available.</div>`;
+      const allThemesHtml = (g.themes && g.themes.length)
+        ? `<div class="gthemes">${g.themes.map(t => `<span class="gtag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+      const allMechanicsHtml = (g.mechanics && g.mechanics.length)
+        ? `<div class="gthemes">${g.mechanics.map(m => `<span class="gtag">${escapeHtml(m)}</span>`).join('')}</div>`
+        : '';
+      const yearHtml = g.year ? `<span>Published ${escapeHtml(String(g.year))}</span>` : '';
+
       card.innerHTML = `
-        ${expansionBadge}
-        ${thumbHtml}
-        <div class="gname">${escapeHtml(g.name)}</div>
-        <div class="grow">
-          <span>${players}</span>
-          <span><b>${weight}</b> wt</span>
+        <div class="card-flip-inner">
+          <div class="card-front">
+            ${expansionBadge}
+            ${thumbHtml}
+            <div class="gname">${escapeHtml(g.name)}</div>
+            <div class="grow">
+              <span>${players}</span>
+              <span><b>${weight}</b> wt</span>
+            </div>
+            ${ownersHtml}
+            ${themesHtml}
+          </div>
+          <div class="card-back">
+            <p class="card-back-title">${escapeHtml(g.name)}</p>
+            <div class="card-back-meta">${players} · ${yearHtml}</div>
+            ${descHtml}
+            ${allMechanicsHtml}
+            ${allThemesHtml}
+            <div class="card-back-hint">Click to flip back</div>
+          </div>
         </div>
-        ${ownersHtml}
-        ${themesHtml}
       `;
+      card.addEventListener('click', () => card.classList.toggle('flipped'));
       grid.appendChild(card);
     });
   }
 
   // BGG's own color scale for rating hexagons: dark green (9-10), light
   // green (8), blue (7), indigo (5-6), red (1-4, darker below 3)
+  // BGG descriptions come through with embedded markup (mostly <br/> for line
+  // breaks). textContent already decodes XML entities, so this just turns
+  // <br/> into real newlines and strips any other stray tags before display.
+  function cleanDescription(raw){
+    if (!raw) return '';
+    let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+(>|$)/g, '');
+    return text.trim();
+  }
+
   function ratingColor(r){
-    const n = Math.round(r);
+    const n = Math.floor(r);
     if (n >= 9) return '#1B7943';
     if (n === 8) return '#2ECC8F';
     if (n === 7) return '#2196D8';
