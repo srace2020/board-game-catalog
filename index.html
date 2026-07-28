@@ -357,6 +357,9 @@
     display:flex;
     flex-wrap:wrap;
     gap:8px;
+    max-height:120px;
+    overflow-y:auto;
+    padding-right:4px;
   }
   .chip{
     font-size:12.5px;
@@ -373,6 +376,15 @@
     background:var(--brick);
     border-color:var(--brick);
     color:#fff5ec;
+  }
+  .chip.unreachable{
+    opacity:.45;
+  }
+  .chip.unreachable.active{
+    background:transparent;
+    border-color:var(--brick);
+    color:var(--brick);
+    opacity:1;
   }
   .theme-empty{font-size:13px;color:#7f9587;font-style:italic;}
 
@@ -566,7 +578,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v17</div>
+  <div class="eyebrow">Board Game Collection · build v20</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -661,6 +673,13 @@
       </div>
     </div>
 
+    <div class="theme-box" id="mechanicBox" style="display:none;">
+      <div class="theme-head">
+        <span class="lbl">Mechanics</span>
+      </div>
+      <div id="mechanicArea"></div>
+    </div>
+
     <div class="theme-box" id="ownerBox" style="display:none;">
       <div class="theme-head">
         <span class="lbl">Owned by</span>
@@ -733,6 +752,8 @@ function showDebugError(msg){
   let games = [];        // merged view across all sources, each with an `owners` array
   let activeThemes = new Set();
   let allThemes = [];
+  let allMechanics = [];
+  let activeMechanics = new Set();
   let activeOwners = new Set();
   let isEnriching = false; // when true, hold off showing any results until enrichment fully finishes
 
@@ -766,6 +787,8 @@ function showDebugError(msg){
   const enrichBtn = document.getElementById('enrichBtn');
   const themeStatus = document.getElementById('themeStatus');
   const themeArea = document.getElementById('themeArea');
+  const mechanicBox = document.getElementById('mechanicBox');
+  const mechanicArea = document.getElementById('mechanicArea');
   const ownerBox = document.getElementById('ownerBox');
   const ownerArea = document.getElementById('ownerArea');
   const onlySharedGames = document.getElementById('onlySharedGames');
@@ -785,7 +808,9 @@ function showDebugError(msg){
     games = [];
     activeThemes = new Set();
     activeOwners = new Set();
+    activeMechanics = new Set();
     allThemes = [];
+    allMechanics = [];
     sourcesBox.style.display = 'none';
     sourcesList.innerHTML = '';
     panel.classList.remove('show');
@@ -812,7 +837,7 @@ function showDebugError(msg){
     }
 
     addUsernameBtn.disabled = true;
-    showUsernameStatus(`Looking up ${username}'s collection... (BGG can take a few seconds to respond)`, false);
+    showUsernameStatus(`Looking up ${username}'s collection... (first-time requests for large collections can take BGG a while to generate — subsequent loads are much faster)`, false);
 
     try {
       const rawGames = await fetchCollection(username);
@@ -864,7 +889,11 @@ function showDebugError(msg){
 
   async function fetchCollectionSubtype(username, subtype){
     const url = `${BGG_WORKER_URL}?username=${encodeURIComponent(username)}&subtype=${subtype}`;
-    const res = await fetchWithRetry429(url, 25000, 6);
+    // timeout here must exceed the Worker's own internal poll time (up to ~28s
+    // while BGG generates a large collection export) or the browser would
+    // abort before the Worker even finishes waiting on BGG
+    const res = await fetchWithRetry429(url, 32000, 6);
+    if (res.status === 202) throw new Error('BGG is still generating this collection export (can take a while the first time for large collections) — try again in a minute');
     if (isThrottleStatus(res.status)) throw new Error('BGG is rate-limiting requests right now — wait a minute and try again');
     if (!res.ok) throw new Error('HTTP ' + res.status + ' from your Worker');
     const text = await res.text();
@@ -940,15 +969,21 @@ function showDebugError(msg){
 
   function renderOwnerChips(){
     const owners = sources.map(s => s.ownerName);
+    const reachableGames = getFiltered({ skipOwners: true });
+    const reachableOwners = new Set();
+    reachableGames.forEach(g => g.owners.forEach(o => reachableOwners.add(o)));
+
     ownerArea.innerHTML = '';
     owners.forEach(owner => {
+      const isReachable = reachableOwners.has(owner);
+      const isActive = activeOwners.has(owner);
       const chip = document.createElement('span');
-      chip.className = 'chip' + (activeOwners.has(owner) ? ' active' : '');
+      chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
       chip.textContent = owner;
+      chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
       chip.addEventListener('click', () => {
         if (activeOwners.has(owner)) activeOwners.delete(owner);
         else activeOwners.add(owner);
-        chip.classList.toggle('active');
         render();
       });
       ownerArea.appendChild(chip);
@@ -1056,19 +1091,30 @@ function showDebugError(msg){
     return status === 429 || status === 500 || status === 503;
   }
 
+  // 202 is different from throttling — it means BGG is still generating the
+  // collection export server-side (can take a while for large collections on
+  // first request; cached for ~7 days after that per BGG's own dev notes).
+  // The Worker already polls internally, but if it's still 202 after all
+  // that, retrying here with a real wait is the only remaining option.
+  function isRetryableStatus(status){
+    return isThrottleStatus(status) || status === 202;
+  }
+
   async function fetchWithRetry429(url, timeoutMs, maxRetries){
     maxRetries = maxRetries ?? 5;
     let res;
     for (let attempt = 0; attempt <= maxRetries; attempt++){
       await waitForCooldown();
       res = await fetchWithTimeout(url, timeoutMs);
-      if (!isThrottleStatus(res.status)) return res;
+      if (!isRetryableStatus(res.status)) return res;
       const retryAfter = res.headers.get('Retry-After');
-      const waitMs = retryAfter ? Number(retryAfter) * 1000 : (1000 * Math.pow(2, attempt)) + Math.random() * 400;
+      const waitMs = retryAfter ? Number(retryAfter) * 1000
+        : res.status === 202 ? 4000 // BGG still generating — a fixed, generous pause makes more sense than exponential backoff here
+        : (1000 * Math.pow(2, attempt)) + Math.random() * 400;
       setCooldown(waitMs);
       if (attempt < maxRetries) await waitForCooldown();
     }
-    return res; // still throttled after all retries
+    return res; // still not ready after all retries
   }
 
   // if a personal Worker URL is configured, use it directly — it's not shared
@@ -1187,14 +1233,17 @@ function showDebugError(msg){
         if (cached){
           g.weight = cached.weight;
           g.themes = cached.themes;
+          g.mechanics = cached.mechanics || [];
           if (cached.type) g.type = cached.type;
           cached.themes.forEach(c => allThemes.includes(c) || allThemes.push(c));
+          (cached.mechanics || []).forEach(m => allMechanics.includes(m) || allMechanics.push(m));
           cacheHits++;
         }
       }
     });
     if (cacheHits > 0){
       allThemes = Array.from(new Set(allThemes)).sort();
+      allMechanics = Array.from(new Set(allMechanics)).sort();
       render();
     }
 
@@ -1210,6 +1259,7 @@ function showDebugError(msg){
     let failedBadIds = 0;      // not retryable — individual stale/merged ids on BGG's end
     let totalProcessed = 0;
     const themeSet = new Set(allThemes);
+    const mechanicSet = new Set(allMechanics);
     // scale concurrency down for very large collections — better to go a bit
     // slower than to trip the rate limit repeatedly across hundreds of batches
     let concurrency = BGG_WORKER_URL ? 6 : 3;
@@ -1222,6 +1272,8 @@ function showDebugError(msg){
         const id = item.getAttribute('id');
         const cats = Array.from(item.querySelectorAll('link[type="boardgamecategory"]'))
           .map(l => l.getAttribute('value'));
+        const mechanics = Array.from(item.querySelectorAll('link[type="boardgamemechanic"]'))
+          .map(l => l.getAttribute('value'));
         const weightEl = item.querySelector('statistics ratings averageweight');
         const weightVal = weightEl ? Number(weightEl.getAttribute('value')) : null;
         // BGG's collection endpoint is known to mistag some expansions as
@@ -1231,13 +1283,15 @@ function showDebugError(msg){
         const g = games.find(gm => String(gm.id) === String(id));
         if (g){
           g.themes = cats;
+          g.mechanics = mechanics;
           if (weightVal && weightVal > 0) g.weight = weightVal;
           if (trueType) g.type = trueType === 'boardgameexpansion' ? 'expansion' : 'standalone';
           cats.forEach(c => themeSet.add(c));
+          mechanics.forEach(m => mechanicSet.add(m));
           // only cache once we actually have a real weight — a game with no
           // weight yet might just be lightly-rated on BGG (retry-worthy),
           // not permanently un-enrichable, so don't lock in a null forever
-          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, type: g.type });
+          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type });
         }
       });
       return items.length;
@@ -1280,6 +1334,7 @@ function showDebugError(msg){
     });
 
     allThemes = Array.from(themeSet).sort();
+    allMechanics = Array.from(mechanicSet).sort();
     render(); // reflect newly-corrected weight/theme/expansion data as each pass completes
 
     const doneCount = games.filter(g => g.themes).length;
@@ -1300,6 +1355,7 @@ function showDebugError(msg){
       ? `Loaded details for ${doneCount} games (${parts.join('; ')})`
       : `Loaded details for ${doneCount} games`;
     if (allThemes.length) renderThemeChips();
+    if (allMechanics.length) renderMechanicChips();
     render();
   }
 
@@ -1308,22 +1364,62 @@ function showDebugError(msg){
       themeArea.innerHTML = '<p class="theme-empty">No category data came back for these games.</p>';
       return;
     }
+    // only offer categories actually present among games that pass every
+    // OTHER active filter — so the list doesn't show options that would
+    // return zero results given what's already selected
+    const reachableGames = getFiltered({ skipThemes: true });
+    const reachableThemes = new Set();
+    reachableGames.forEach(g => (g.themes || []).forEach(t => reachableThemes.add(t)));
+
     themeArea.innerHTML = '';
     const chipWrap = document.createElement('div');
     chipWrap.className = 'theme-chips';
     allThemes.forEach(theme => {
+      const isReachable = reachableThemes.has(theme);
+      const isActive = activeThemes.has(theme);
+      if (!isReachable && !isActive) return; // hide options that are impossible given current filters
       const chip = document.createElement('span');
-      chip.className = 'chip';
+      chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
       chip.textContent = theme;
+      chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
       chip.addEventListener('click', () => {
         if (activeThemes.has(theme)) activeThemes.delete(theme);
         else activeThemes.add(theme);
-        chip.classList.toggle('active');
         render();
       });
       chipWrap.appendChild(chip);
     });
     themeArea.appendChild(chipWrap);
+  }
+
+  function renderMechanicChips(){
+    if (!allMechanics.length){
+      mechanicArea.innerHTML = '<p class="theme-empty">No mechanic data came back for these games.</p>';
+      return;
+    }
+    const reachableGames = getFiltered({ skipMechanics: true });
+    const reachableMechanics = new Set();
+    reachableGames.forEach(g => (g.mechanics || []).forEach(m => reachableMechanics.add(m)));
+
+    mechanicArea.innerHTML = '';
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'theme-chips';
+    allMechanics.forEach(mechanic => {
+      const isReachable = reachableMechanics.has(mechanic);
+      const isActive = activeMechanics.has(mechanic);
+      if (!isReachable && !isActive) return;
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
+      chip.textContent = mechanic;
+      chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
+      chip.addEventListener('click', () => {
+        if (activeMechanics.has(mechanic)) activeMechanics.delete(mechanic);
+        else activeMechanics.add(mechanic);
+        render();
+      });
+      chipWrap.appendChild(chip);
+    });
+    mechanicArea.appendChild(chipWrap);
   }
 
   // ---------- filtering + rendering ----------
@@ -1341,7 +1437,8 @@ function showDebugError(msg){
     el.addEventListener('change', render);
   });
 
-  function getFiltered(){
+  function getFiltered(opts){
+    opts = opts || {};
     const n = playerCountSel.value ? Number(playerCountSel.value) : null;
     const wMin = weightMin.value !== '' ? Number(weightMin.value) : null;
     const wMax = weightMax.value !== '' ? Number(weightMax.value) : null;
@@ -1365,10 +1462,13 @@ function showDebugError(msg){
         if (searchMode === 'include' && !matches) return false;
         if (searchMode === 'exclude' && matches) return false;
       }
-      if (activeThemes.size > 0){
+      if (!opts.skipThemes && activeThemes.size > 0){
         if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
       }
-      if (activeOwners.size > 0){
+      if (!opts.skipMechanics && activeMechanics.size > 0){
+        if (!g.mechanics || !g.mechanics.some(m => activeMechanics.has(m))) return false;
+      }
+      if (!opts.skipOwners && activeOwners.size > 0){
         if (!g.owners.some(o => activeOwners.has(o))) return false;
       }
       if (onlySharedGames.checked && g.owners.length < 2) return false;
@@ -1399,6 +1499,14 @@ function showDebugError(msg){
       return;
     }
     loadingMsg.style.display = 'none';
+    resultsBar.style.display = games.length ? 'flex' : 'none';
+
+    if (allThemes.length) renderThemeChips();
+    if (allMechanics.length){
+      mechanicBox.style.display = 'block';
+      renderMechanicChips();
+    }
+    if (sources.length > 1) renderOwnerChips();
 
     const filtered = getFiltered();
     resultCount.textContent = filtered.length;
@@ -1470,7 +1578,7 @@ function showDebugError(msg){
   // ---------- download filtered CSV ----------
   downloadBtn.addEventListener('click', () => {
     const filtered = getFiltered();
-    const header = ['name','minplayers','maxplayers','weight','rating','owners','themes'];
+    const header = ['name','minplayers','maxplayers','weight','rating','owners','themes','mechanics'];
     const rows = filtered.map(g => [
       g.name,
       g.min ?? '',
@@ -1478,7 +1586,8 @@ function showDebugError(msg){
       g.weight ?? '',
       g.rating ?? '',
       g.owners ? g.owners.join('; ') : '',
-      g.themes ? g.themes.join('; ') : ''
+      g.themes ? g.themes.join('; ') : '',
+      g.mechanics ? g.mechanics.join('; ') : ''
     ]);
     const csv = [header, ...rows].map(r =>
       r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')
