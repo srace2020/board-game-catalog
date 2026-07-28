@@ -563,7 +563,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v14</div>
+  <div class="eyebrow">Board Game Collection · build v15</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -861,7 +861,7 @@ function showDebugError(msg){
   async function fetchCollectionSubtype(username, subtype){
     const url = `${BGG_WORKER_URL}?username=${encodeURIComponent(username)}&subtype=${subtype}`;
     const res = await fetchWithRetry429(url, 25000, 6);
-    if (res.status === 429) throw new Error('BGG is rate-limiting requests right now — wait a minute and try again');
+    if (isThrottleStatus(res.status)) throw new Error('BGG is rate-limiting requests right now — wait a minute and try again');
     if (!res.ok) throw new Error('HTTP ' + res.status + ' from your Worker');
     const text = await res.text();
     if (/invalid username/i.test(text)) throw new Error('BGG says this username doesn\'t exist');
@@ -1044,19 +1044,27 @@ function showDebugError(msg){
   // backs off exponentially, and shares that cooldown with every other
   // in-flight request. Other error statuses are returned immediately since
   // retrying won't help those.
+  // BGG's own docs say throttling shows up as 500 or 503, though in practice
+  // 429 shows up too (likely from Cloudflare's edge in front of BGG) — treat
+  // all three as "back off and retry", since retrying a real 4xx/5xx error
+  // wouldn't help but these specifically mean "you're going too fast."
+  function isThrottleStatus(status){
+    return status === 429 || status === 500 || status === 503;
+  }
+
   async function fetchWithRetry429(url, timeoutMs, maxRetries){
     maxRetries = maxRetries ?? 5;
     let res;
     for (let attempt = 0; attempt <= maxRetries; attempt++){
       await waitForCooldown();
       res = await fetchWithTimeout(url, timeoutMs);
-      if (res.status !== 429) return res;
+      if (!isThrottleStatus(res.status)) return res;
       const retryAfter = res.headers.get('Retry-After');
       const waitMs = retryAfter ? Number(retryAfter) * 1000 : (1000 * Math.pow(2, attempt)) + Math.random() * 400;
       setCooldown(waitMs);
       if (attempt < maxRetries) await waitForCooldown();
     }
-    return res; // still 429 after all retries
+    return res; // still throttled after all retries
   }
 
   // if a personal Worker URL is configured, use it directly — it's not shared
@@ -1064,7 +1072,7 @@ function showDebugError(msg){
   async function fetchViaWorker(ids){
     const url = `${BGG_WORKER_URL}?ids=${ids.join(',')}`;
     const res = await fetchWithRetry429(url, 8000);
-    if (res.status === 429){
+    if (isThrottleStatus(res.status)){
       const err = new Error('still rate-limited after retries');
       err.rateLimited = true;
       throw err;
@@ -1139,7 +1147,7 @@ function showDebugError(msg){
     if (!idsNeeded.length) return;
     if (pass > 1) themeStatus.textContent = `Retrying rate-limited games (pass ${pass})...`;
 
-    const batchSize = 40; // bigger batches = fewer total requests for large collections
+    const batchSize = 20; // BGG's documented hard max for the thing endpoint is 20 ids per request
     const batches = [];
     for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
 
