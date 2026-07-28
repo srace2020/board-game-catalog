@@ -435,7 +435,7 @@
   .gcard{
     perspective:1200px;
     cursor:pointer;
-    min-height:150px;
+    height:340px;
   }
   .card-flip-inner{
     position:relative;
@@ -455,16 +455,16 @@
     border-top:8px solid var(--brick);
     backface-visibility:hidden;
     -webkit-backface-visibility:hidden;
+    position:absolute;
+    inset:0;
   }
   .card-front{
     padding:16px 16px 14px;
-    position:relative;
     display:flex;
     flex-direction:column;
+    overflow:hidden;
   }
   .card-back{
-    position:absolute;
-    inset:0;
     transform:rotateY(180deg);
     padding:16px;
     overflow-y:auto;
@@ -635,7 +635,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v25</div>
+  <div class="eyebrow">Board Game Collection · build v26</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1261,7 +1261,7 @@ function showDebugError(msg){
   // from BGG, there's no need to ever ask again. Dramatically speeds up
   // reloading the same collection, or adding a second person whose games
   // overlap with someone already loaded.
-  const CACHE_PREFIX = 'bgg_catalog_cache_v1:';
+  const CACHE_PREFIX = 'bgg_catalog_cache_v2:'; // bumped: v1 entries predate description/year fields
   function getCachedGame(id){
     try {
       const raw = localStorage.getItem(CACHE_PREFIX + id);
