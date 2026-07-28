@@ -353,6 +353,18 @@
   .btn-enrich:hover{background:#4d7f5c;}
   .btn-enrich:disabled{opacity:.5;cursor:not-allowed;}
   .theme-status{font-size:12px;color:#8f8fb8;font-family:'IBM Plex Mono',monospace;}
+  .chip-search{
+    width:100%;
+    background:#14122d;
+    border:1px solid #3a3a5f;
+    color:var(--card);
+    padding:8px 10px;
+    border-radius:6px;
+    font-size:13px;
+    font-family:'IBM Plex Sans',sans-serif;
+    margin-bottom:10px;
+  }
+  .chip-search:focus{outline:2px solid var(--focus);outline-offset:1px;}
   .theme-chips{
     display:flex;
     flex-wrap:wrap;
@@ -578,7 +590,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v20</div>
+  <div class="eyebrow">Board Game Collection · build v21</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -668,6 +680,7 @@
           <button class="btn-enrich" id="enrichBtn" style="display:none;">Retry failed lookups</button>
         </div>
       </div>
+      <input type="text" id="themeSearchInput" class="chip-search" placeholder="Filter categories (e.g. spa)" style="display:none;">
       <div id="themeArea">
         <p class="theme-empty">Weight and category data loads automatically from BGG as soon as a collection is added — no action needed here.</p>
       </div>
@@ -677,6 +690,7 @@
       <div class="theme-head">
         <span class="lbl">Mechanics</span>
       </div>
+      <input type="text" id="mechanicSearchInput" class="chip-search" placeholder="Filter mechanics (e.g. dice)">
       <div id="mechanicArea"></div>
     </div>
 
@@ -788,6 +802,8 @@ function showDebugError(msg){
   const themeStatus = document.getElementById('themeStatus');
   const themeArea = document.getElementById('themeArea');
   const mechanicBox = document.getElementById('mechanicBox');
+  const themeSearchInput = document.getElementById('themeSearchInput');
+  const mechanicSearchInput = document.getElementById('mechanicSearchInput');
   const mechanicArea = document.getElementById('mechanicArea');
   const ownerBox = document.getElementById('ownerBox');
   const ownerArea = document.getElementById('ownerArea');
@@ -1038,6 +1054,8 @@ function showDebugError(msg){
   }
 
   onlySharedGames.addEventListener('change', render);
+  themeSearchInput.addEventListener('input', renderThemeChips);
+  mechanicSearchInput.addEventListener('input', renderMechanicChips);
 
 
   // ---------- data enrichment (weight + categories, via BGG's live API) ----------
@@ -1362,8 +1380,12 @@ function showDebugError(msg){
   function renderThemeChips(){
     if (!allThemes.length){
       themeArea.innerHTML = '<p class="theme-empty">No category data came back for these games.</p>';
+      themeSearchInput.style.display = 'none';
       return;
     }
+    themeSearchInput.style.display = 'block';
+    const query = themeSearchInput.value.trim().toLowerCase();
+
     // only offer categories actually present among games that pass every
     // OTHER active filter — so the list doesn't show options that would
     // return zero results given what's already selected
@@ -1375,8 +1397,9 @@ function showDebugError(msg){
     const chipWrap = document.createElement('div');
     chipWrap.className = 'theme-chips';
     allThemes.forEach(theme => {
-      const isReachable = reachableThemes.has(theme);
       const isActive = activeThemes.has(theme);
+      if (query && !isActive && !theme.toLowerCase().includes(query)) return; // substring match against the search box
+      const isReachable = reachableThemes.has(theme);
       if (!isReachable && !isActive) return; // hide options that are impossible given current filters
       const chip = document.createElement('span');
       chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
@@ -1397,6 +1420,7 @@ function showDebugError(msg){
       mechanicArea.innerHTML = '<p class="theme-empty">No mechanic data came back for these games.</p>';
       return;
     }
+    const query = mechanicSearchInput.value.trim().toLowerCase();
     const reachableGames = getFiltered({ skipMechanics: true });
     const reachableMechanics = new Set();
     reachableGames.forEach(g => (g.mechanics || []).forEach(m => reachableMechanics.add(m)));
@@ -1405,8 +1429,9 @@ function showDebugError(msg){
     const chipWrap = document.createElement('div');
     chipWrap.className = 'theme-chips';
     allMechanics.forEach(mechanic => {
-      const isReachable = reachableMechanics.has(mechanic);
       const isActive = activeMechanics.has(mechanic);
+      if (query && !isActive && !mechanic.toLowerCase().includes(query)) return;
+      const isReachable = reachableMechanics.has(mechanic);
       if (!isReachable && !isActive) return;
       const chip = document.createElement('span');
       chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
@@ -1463,10 +1488,10 @@ function showDebugError(msg){
         if (searchMode === 'exclude' && matches) return false;
       }
       if (!opts.skipThemes && activeThemes.size > 0){
-        if (!g.themes || !g.themes.some(t => activeThemes.has(t))) return false;
+        if (!g.themes || !Array.from(activeThemes).every(t => g.themes.includes(t))) return false;
       }
       if (!opts.skipMechanics && activeMechanics.size > 0){
-        if (!g.mechanics || !g.mechanics.some(m => activeMechanics.has(m))) return false;
+        if (!g.mechanics || !Array.from(activeMechanics).every(m => g.mechanics.includes(m))) return false;
       }
       if (!opts.skipOwners && activeOwners.size > 0){
         if (!g.owners.some(o => activeOwners.has(o))) return false;
