@@ -475,10 +475,28 @@
   .card-back{
     transform:rotateY(180deg);
     padding:16px;
-    overflow-y:auto;
+    overflow:hidden;
     display:flex;
     flex-direction:column;
-    gap:10px;
+    gap:8px;
+  }
+  .card-back-top{
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .card-back-scroll{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+  }
+  .card-back-bottom{
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    padding-top:8px;
   }
   .card-back-title{
     font-family:'Poppins',sans-serif;
@@ -498,12 +516,11 @@
     font-family:'IBM Plex Mono',monospace;
   }
   .card-back-hint{
-    margin-top:auto;
     font-size:10.5px;
     color:var(--ink-soft);
     font-style:italic;
     text-align:center;
-    padding-top:8px;
+    padding-top:4px;
   }
   .card-back-links{
     display:flex;
@@ -710,7 +727,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v30</div>
+  <div class="eyebrow">Board Game Collection · build v31</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1740,16 +1757,22 @@ function showDebugError(msg){
             ${themesHtml}
           </div>
           <div class="card-back">
-            <p class="card-back-title">${escapeHtml(g.name)}</p>
-            <div class="card-back-meta">${players} · ${yearHtml}</div>
-            ${descHtml}
-            ${allMechanicsHtml}
-            ${allThemesHtml}
-            <div class="card-back-links">
-              <button class="card-link-btn how-to-play-btn" data-id="${escapeHtml(String(g.id))}">▶ How to Play</button>
-              <button class="card-link-btn rules-btn" data-id="${escapeHtml(String(g.id))}" data-name="${escapeHtml(g.name)}">📖 Rules</button>
+            <div class="card-back-top">
+              <p class="card-back-title">${escapeHtml(g.name)}</p>
+              <div class="card-back-meta">${players} · ${yearHtml}</div>
+              ${allMechanicsHtml}
+              ${allThemesHtml}
             </div>
-            <div class="card-back-hint">Click card to flip back</div>
+            <div class="card-back-scroll">
+              ${descHtml}
+            </div>
+            <div class="card-back-bottom">
+              <div class="card-back-links">
+                <button class="card-link-btn how-to-play-btn" data-id="${escapeHtml(String(g.id))}">▶ How to Play</button>
+                <button class="card-link-btn rules-btn" data-id="${escapeHtml(String(g.id))}" data-name="${escapeHtml(g.name)}">📖 Rules</button>
+              </div>
+              <div class="card-back-hint">Click card to flip back</div>
+            </div>
           </div>
         </div>
       `;
