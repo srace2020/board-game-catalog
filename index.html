@@ -489,6 +489,7 @@
     padding:16px 16px 14px;
     display:flex;
     flex-direction:column;
+    justify-content:space-between;
     overflow:hidden;
   }
   .card-back{
@@ -839,7 +840,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v40</div>
+  <div class="eyebrow">Board Game Collection · build v42</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -874,11 +875,15 @@
     <div class="filters-grid">
 
       <div class="field">
-        <label for="playerCount">Player count supports</label>
+        <label for="playerCount">Player count</label>
         <select id="playerCount">
           <option value="">Any</option>
         </select>
-        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;">Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.</div>
+        <div class="checkbox-row" style="margin-top:8px;">
+          <input type="checkbox" id="playerCountAtMost">
+          <label for="playerCountAtMost">At most this many (max players ≤ N) — check this to isolate solo games by setting 1</label>
+        </div>
+        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;" id="playerCountHint">Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.</div>
       </div>
 
       <div class="field">
@@ -896,6 +901,15 @@
           <input type="number" id="ratingMin" step="0.1" min="0" max="10" value="0">
           <span>and up</span>
         </div>
+      </div>
+
+      <div class="field">
+        <label>Max BGG rating</label>
+        <div class="range-row">
+          <input type="number" id="ratingMax" step="0.1" min="0" max="10" placeholder="e.g. 6.2">
+          <span>and below</span>
+        </div>
+        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;">Useful for culling — e.g. set to 6.2 to see everything rated below that.</div>
       </div>
 
       <div class="field">
@@ -1048,6 +1062,9 @@ function showDebugError(msg){
   const weightMin = document.getElementById('weightMin');
   const weightMax = document.getElementById('weightMax');
   const ratingMin = document.getElementById('ratingMin');
+  const ratingMax = document.getElementById('ratingMax');
+  const playerCountAtMost = document.getElementById('playerCountAtMost');
+  const playerCountHint = document.getElementById('playerCountHint');
   const searchBox = document.getElementById('searchBox');
   const modeInclude = document.getElementById('modeInclude');
   const modeExclude = document.getElementById('modeExclude');
@@ -1489,7 +1506,7 @@ function showDebugError(msg){
   // from BGG, there's no need to ever ask again. Dramatically speeds up
   // reloading the same collection, or adding a second person whose games
   // overlap with someone already loaded.
-  const CACHE_PREFIX = 'bgg_catalog_cache_v3:'; // bumped: v2 entries predate min/max player counts
+  const CACHE_PREFIX = 'bgg_catalog_cache_v4:'; // bumped: v3 descriptions predate HTML entity decoding (&mdash; etc.)
   function getCachedGame(id){
     try {
       const raw = localStorage.getItem(CACHE_PREFIX + id);
@@ -1789,9 +1806,15 @@ function showDebugError(msg){
     });
   });
 
-  [playerCountSel, weightMin, weightMax, ratingMin, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
+  [playerCountSel, weightMin, weightMax, ratingMin, ratingMax, playerCountAtMost, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
     el.addEventListener('input', render);
     el.addEventListener('change', render);
+  });
+
+  playerCountAtMost.addEventListener('change', () => {
+    playerCountHint.textContent = playerCountAtMost.checked
+      ? 'Shows games whose max player count is this number or fewer — e.g. checking "1" isolates solo-only games; "4" shows anything topping out at 4 or less, even if it also plays fewer.'
+      : 'Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.';
   });
 
   function getFiltered(opts){
@@ -1800,13 +1823,18 @@ function showDebugError(msg){
     const wMin = weightMin.value !== '' ? Number(weightMin.value) : null;
     const wMax = weightMax.value !== '' ? Number(weightMax.value) : null;
     const rMin = ratingMin.value !== '' ? Number(ratingMin.value) : 0;
+    const rMax = ratingMax.value !== '' ? Number(ratingMax.value) : null;
     const q = searchBox.value.trim().toLowerCase();
 
     let out = games.filter(g => {
       if (excludeExpansions.checked && g.type && g.type.toLowerCase() === 'expansion') return false;
       if (n != null){
         if (g.min == null || g.max == null) return false;
-        if (!(g.min <= n && g.max >= n)) return false;
+        if (playerCountAtMost.checked){
+          if (g.max > n) return false; // max player count must be N or fewer — isolates solo/small-group games
+        } else {
+          if (!(g.min <= n && g.max >= n)) return false;
+        }
       }
       if (excludeUnrated.checked && (g.weight == null || g.weight <= 0)) return false;
       if (g.weight != null && g.weight > 0){
@@ -1814,6 +1842,7 @@ function showDebugError(msg){
         if (wMax != null && g.weight > wMax) return false;
       }
       if (g.rating != null && rMin != null && g.rating < rMin) return false;
+      if (g.rating != null && rMax != null && g.rating > rMax) return false;
       if (q){
         const matches = g.name.toLowerCase().includes(q);
         if (searchMode === 'include' && !matches) return false;
@@ -2316,7 +2345,17 @@ function showDebugError(msg){
 
   function cleanDescription(raw){
     if (!raw) return '';
+    // step 1: convert <br> tags to real newlines, then strip any other tags —
+    // do this BEFORE entity-decoding so stray "<"/">" from entity decoding
+    // never gets misread as a tag
     let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+(>|$)/g, '');
+    // step 2: BGG's descriptions use HTML-style named entities (&mdash;,
+    // &rsquo;, &ldquo;, etc.) — the XML parser only decodes the 5 standard
+    // XML entities, so these pass through as literal text otherwise. The
+    // browser's own HTML parser (via a scratch textarea) decodes them correctly.
+    const ta = document.createElement('textarea');
+    ta.innerHTML = text;
+    text = ta.value;
     return text.trim();
   }
 
