@@ -301,7 +301,7 @@
   }
   .range-row{display:flex;align-items:center;gap:8px;}
   .range-row input{width:100%;}
-  .range-row span{color:#7f9587;font-size:13px;}
+  .range-row span{color:#8f8fb8;font-size:13px;}
   .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
   .checkbox-row input{width:16px;height:16px;accent-color:var(--brick);}
   .checkbox-row label{font-size:13px;color:#cdcde2;margin:0;text-transform:none;letter-spacing:0;font-family:'IBM Plex Sans',sans-serif;}
@@ -422,7 +422,7 @@
     color:var(--brick);
     opacity:1;
   }
-  .theme-empty{font-size:13px;color:#7f9587;font-style:italic;}
+  .theme-empty{font-size:13px;color:#8f8fb8;font-style:italic;}
 
   /* ---------- results header ---------- */
   .results-bar{
@@ -901,7 +901,6 @@
           <input type="checkbox" id="playerCountAtMost">
           <label for="playerCountAtMost">Exact max players (max players = N) — check this to isolate solo games by setting 1</label>
         </div>
-        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;" id="playerCountHint">Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.</div>
       </div>
 
       <div class="field">
@@ -927,7 +926,6 @@
           <input type="number" id="ratingMax" step="0.1" min="0" max="10" placeholder="e.g. 6.2">
           <span>and below</span>
         </div>
-        <div style="font-size:11.5px;color:#7f9587;margin-top:6px;">Useful for culling — e.g. set to 6.2 to see everything rated below that.</div>
       </div>
 
       <div class="field">
@@ -1024,7 +1022,7 @@
   <img class="bgg-logo" src="data:image/png;base64,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" alt="Powered by BGG">
   </div>
   <p><button id="clearCacheBtn" style="background:none;border:none;color:#8989c8;text-decoration:underline;cursor:pointer;font-size:12px;font-family:inherit;padding:0;">Clear cached game data</button></p>
-  <p style="font-size:10px;opacity:.5;">build v53</p>
+  <p style="font-size:10px;opacity:.5;">build v55</p>
 </footer>
 
 <script>
@@ -1084,7 +1082,6 @@ function showDebugError(msg){
   const ratingMin = document.getElementById('ratingMin');
   const ratingMax = document.getElementById('ratingMax');
   const playerCountAtMost = document.getElementById('playerCountAtMost');
-  const playerCountHint = document.getElementById('playerCountHint');
   const searchBox = document.getElementById('searchBox');
   const modeInclude = document.getElementById('modeInclude');
   const modeExclude = document.getElementById('modeExclude');
@@ -1862,12 +1859,6 @@ function showDebugError(msg){
   [playerCountSel, weightMin, weightMax, ratingMin, ratingMax, playerCountAtMost, searchBox, excludeExpansions, excludeUnrated, sortBy].forEach(el => {
     el.addEventListener('input', render);
     el.addEventListener('change', render);
-  });
-
-  playerCountAtMost.addEventListener('change', () => {
-    playerCountHint.textContent = playerCountAtMost.checked
-      ? 'Shows only games whose max player count exactly equals this number — e.g. checking "1" shows solo-only games; "4" shows only games that top out at exactly 4, not a 2–6 game even though it can be played with 4.'
-      : 'Shows games whose min–max range includes this number — a 2–8 player game will show up under 5, 6, 7, and 8 alike.';
   });
 
   function getFiltered(opts){
