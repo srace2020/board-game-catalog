@@ -559,6 +559,97 @@
     width:100%;
     box-shadow:0 10px 30px #0008;
   }
+  .modal-box-wide{
+    max-width:560px;
+    max-height:85vh;
+    overflow-y:auto;
+  }
+  .suggester-search{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:14px;
+    margin-bottom:10px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .suggester-picklist{
+    max-height:220px;
+    overflow-y:auto;
+    border:1px solid #eee;
+    border-radius:8px;
+    padding:6px;
+    margin-bottom:14px;
+  }
+  .suggester-pick-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 8px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:13.5px;
+  }
+  .suggester-pick-row:hover{ background:#00000008; }
+  .suggester-pick-row input{ width:16px; height:16px; accent-color:var(--brick); }
+  .suggester-refine{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .suggester-refine label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    display:block;
+    margin-bottom:4px;
+  }
+  .suggester-refine input, .suggester-refine select{
+    width:100%;
+    padding:7px 8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    font-size:13px;
+  }
+  .suggester-go-btn{
+    width:100%;
+    background:var(--brick);
+    color:#fff;
+    border:none;
+    padding:12px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .suggester-go-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .suggester-result-card{
+    display:flex;
+    gap:12px;
+    padding:12px;
+    border-bottom:1px solid #eee;
+    align-items:center;
+  }
+  .suggester-result-card img{
+    width:56px; height:56px;
+    object-fit:cover;
+    border-radius:6px;
+    flex-shrink:0;
+  }
+  .suggester-result-info{ flex:1; min-width:0; }
+  .suggester-result-info .name{ font-weight:700; font-size:14px; margin-bottom:2px; }
+  .suggester-result-info .meta{ font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .suggester-result-info .why{ font-size:11px; color:var(--ink-soft); margin-top:3px; font-style:italic; }
+  .suggester-status{
+    text-align:center;
+    padding:30px 10px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+  }
   .modal-box h3{
     font-family:'Poppins',sans-serif;
     margin:0 0 16px;
@@ -727,7 +818,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v32</div>
+  <div class="eyebrow">Board Game Collection · build v33</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -847,6 +938,7 @@
   <div class="results-bar" id="resultsBar" style="display:none;">
     <div class="results-count"><b id="resultCount">0</b> games match</div>
     <div class="results-tools">
+      <button class="btn-enrich" id="suggestBtn">🎲 Suggest New Games</button>
       <label for="sortBy" style="font-size:12px;color:#a8a8cc;font-family:'IBM Plex Mono',monospace;">SORT BY</label>
       <select id="sortBy">
         <option value="weight-asc">Weight (light → heavy)</option>
@@ -937,6 +1029,8 @@ function showDebugError(msg){
   const excludeUnrated = document.getElementById('excludeUnrated');
   const sortBy = document.getElementById('sortBy');
   const enrichBtn = document.getElementById('enrichBtn');
+  const suggestBtn = document.getElementById('suggestBtn');
+  suggestBtn.addEventListener('click', openSuggesterModal);
   const themeStatus = document.getElementById('themeStatus');
   const themeArea = document.getElementById('themeArea');
   const mechanicBox = document.getElementById('mechanicBox');
@@ -1385,6 +1479,43 @@ function showDebugError(msg){
     }
   });
 
+  // Curated pool of well-known, well-regarded games spanning a wide range of
+  // weights, player counts, and genres — used as the "suggest new games"
+  // candidate pool. These are NAMES only (verified against real BGG top-rank
+  // sources), never hardcoded IDs — each gets resolved to its correct BGG id
+  // live via BGG's own search API, so there's no risk of a wrong/stale id.
+  const SUGGESTION_CANDIDATE_NAMES = [
+    "Pandemic Legacy: Season 1","Crokinole","Dune: Imperium","7 Wonders Duel","Sky Team",
+    "Ark Nova","Terraforming Mars","The Crew: Mission Deep Sea","Gloomhaven","Cascadia",
+    "The Castles of Burgundy","SCOUT","Harmonies","Heat: Pedal to the Metal","Wingspan",
+    "Gloomhaven: Jaws of the Lion","Lost Ruins of Arnak","Azul","Twilight Imperium: Fourth Edition",
+    "The Crew: The Quest for Planet Nine","Cthulhu: Death May Die","Codenames","Twilight Struggle",
+    "Bomb Busters","Everdell","Just One","Spirit Island","Splendor Duel","Viticulture","Scythe",
+    "Marvel Champions: The Card Game","Decrypto","War of the Ring","SETI: Search for Extraterrestrial Intelligence",
+    "The Quest for El Dorado","KLASK","Mansions of Madness: Second Edition","So Clover!","Jaipur",
+    "Gaia Project","Arkham Horror: The Card Game","Final Girl","Great Western Trail","Eclipse: Second Dawn for the Galaxy",
+    "Pandemic Legacy: Season 0","MicroMacro: Crime City","Hansa Teutonica","The Search for Planet X",
+    "7 Wonders","Monikers","Catan","Ticket to Ride","Carcassonne","Dominion","Puerto Rico","Power Grid",
+    "Agricola","Race for the Galaxy","Small World","King of Tokyo","Love Letter","Coup","Sushi Go!",
+    "Sushi Go Party!","Hanabi","Dixit","Mysterium","Patchwork","Kingdomino","Machi Koro","Splendor",
+    "Ticket to Ride: Europe","Forbidden Island","Forbidden Desert","Skull","The Resistance","Avalon",
+    "Secret Hitler","Camel Up","Telestrations","Wavelength","Snake Oil","Sheriff of Nottingham",
+    "Colt Express","Betrayal at House on the Hill","Clank!: A Deck-Building Adventure","Root",
+    "Brass: Birmingham","Concordia","Terra Mystica","Through the Ages","El Grande","Caverna",
+    "A Feast for Odin","Barrage","Nemesis","Star Wars: Rebellion","Cosmic Encounter","Five Tribes",
+    "Lords of Waterdeep","Blood Rage","Mage Knight","Onitama","Santorini","Tsuro","Flamme Rouge",
+    "Roll for the Galaxy","For Sale","6 nimmt!","Modern Art","Ra","Acquire","Robinson Crusoe",
+    "Res Arcana","PARKS","Photosynthesis","Dorfromantik","Cat in the Box","The Fox in the Forest",
+    "Lost Cities","Star Realms","Pandemic","Forbidden Sky","Point Salad","Sagrada","Welcome To...",
+    "Cartographers","That's Pretty Clever!","Coloretto","Bohnanza","Stone Age","Le Havre","Nations",
+    "Innovation","Marco Polo","Anachrony","Underwater Cities","Maracaibo","Kemet","Rising Sun",
+    "Inis","Cyclades","Oath","Undaunted: Normandy 1944","Fields of Arle","Wyrmspan","Ora et Labora",
+    "Tzolk'in: The Mayan Calendar","Wavelength","Trekking the National Parks","New Frontiers",
+    "Dice Forge","Quacks of Quedlinburg","Dinosaur Island","Tapestry","Reef","Calico","Cascadia",
+    "Wingspan Asia","Everdell: Farshore","Tigris & Euphrates","Twilight Imperium: Fourth Edition",
+    "Fort","Jump Drive","Hero Realms","Ascension","Glory to Rome","Container","Caylus"
+  ];
+
   async function enrichAllGames(pass){
     pass = pass || 1;
 
@@ -1446,6 +1577,9 @@ function showDebugError(msg){
         const description = descEl ? cleanDescription(descEl.textContent) : '';
         const yearEl = item.querySelector('yearpublished');
         const year = yearEl ? yearEl.getAttribute('value') : null;
+        const rankEl = item.querySelector('rank[type="subtype"]');
+        const rankVal = rankEl ? rankEl.getAttribute('value') : null;
+        const rank = (rankVal && rankVal !== 'Not Ranked') ? Number(rankVal) : null;
         // BGG's collection endpoint is known to mistag some expansions as
         // "boardgame" — the thing endpoint's own top-level type is accurate,
         // so use it to correct the classification we guessed earlier.
@@ -1456,6 +1590,7 @@ function showDebugError(msg){
           g.mechanics = mechanics;
           g.description = description;
           if (year) g.year = year;
+          if (rank != null) g.rank = rank;
           if (weightVal && weightVal > 0) g.weight = weightVal;
           if (trueType) g.type = trueType === 'boardgameexpansion' ? 'expansion' : 'standalone';
           cats.forEach(c => themeSet.add(c));
@@ -1463,7 +1598,7 @@ function showDebugError(msg){
           // only cache once we actually have a real weight — a game with no
           // weight yet might just be lightly-rated on BGG (retry-worthy),
           // not permanently un-enrichable, so don't lock in a null forever
-          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type, description: g.description, year: g.year });
+          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type, description: g.description, year: g.year, name: g.name, image: g.image || g.thumbnail, rating: g.rating, rank: g.rank });
         }
       });
       return items.length;
@@ -1806,6 +1941,296 @@ function showDebugError(msg){
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
     document.body.appendChild(overlay);
+  }
+
+  // ---------- Suggest New Games ----------
+  const NAME_TO_ID_CACHE_PREFIX = 'bgg_name_to_id_v1:';
+  function getCachedIdForName(name){
+    try {
+      const raw = localStorage.getItem(NAME_TO_ID_CACHE_PREFIX + name.toLowerCase());
+      return raw ? JSON.parse(raw) : null;
+    } catch(e){ return null; }
+  }
+  function setCachedIdForName(name, id){
+    try { localStorage.setItem(NAME_TO_ID_CACHE_PREFIX + name.toLowerCase(), JSON.stringify(id)); }
+    catch(e){ /* ignore */ }
+  }
+
+  // resolves a game name to its BGG id via BGG's own search API — live, so
+  // there's never a hardcoded/memorized id that could be wrong
+  async function resolveNameToId(name){
+    const cached = getCachedIdForName(name);
+    if (cached) return cached;
+    const url = `${BGG_WORKER_URL}?search=${encodeURIComponent(name)}`;
+    const res = await fetchWithRetry429(url, 10000, 2);
+    if (!res.ok) return null;
+    const text = await res.text();
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    const items = Array.from(xml.querySelectorAll('item'));
+    if (!items.length) return null;
+    // prefer an exact (case-insensitive) name match; otherwise take the first result
+    let best = items.find(item => {
+      const nameEl = item.querySelector('name');
+      return nameEl && nameEl.getAttribute('value').toLowerCase() === name.toLowerCase();
+    }) || items[0];
+    const id = best.getAttribute('id');
+    if (id) setCachedIdForName(name, id);
+    return id;
+  }
+
+  function openSuggesterModal(){
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'suggesterOverlay';
+    document.body.appendChild(overlay);
+    renderSuggesterPicker(overlay);
+  }
+
+  function renderSuggesterPicker(overlay){
+    const ownedGames = games.slice().sort((a,b) => a.name.localeCompare(b.name));
+    const selected = new Set();
+
+    overlay.innerHTML = `
+      <div class="modal-box modal-box-wide">
+        <h3>🎲 Suggest New Games</h3>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-8px;margin-bottom:14px;">
+          Pick 3 or more games your group has enjoyed. We'll look for games with similar themes and
+          mechanics that <b>aren't</b> already in your library.
+        </p>
+        <input type="text" class="suggester-search" id="suggesterSearchInput" placeholder="Search your library...">
+        <div class="suggester-picklist" id="suggesterPicklist"></div>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;"><b id="suggesterSelectedCount">0</b> selected (need at least 3)</p>
+        <div class="suggester-refine">
+          <div>
+            <label>Player count</label>
+            <select id="suggesterPlayerCount"><option value="">Any</option></select>
+          </div>
+          <div>
+            <label>Min BGG rating</label>
+            <input type="number" id="suggesterMinRating" min="0" max="10" step="0.1" placeholder="e.g. 7.0">
+          </div>
+          <div>
+            <label>Min weight</label>
+            <input type="number" id="suggesterMinWeight" min="1" max="5" step="0.1" placeholder="e.g. 1.5">
+          </div>
+          <div>
+            <label>Max weight</label>
+            <input type="number" id="suggesterMaxWeight" min="1" max="5" step="0.1" placeholder="e.g. 3.5">
+          </div>
+        </div>
+        <button class="suggester-go-btn" id="suggesterGoBtn" disabled>Select at least 3 games</button>
+        <button class="modal-close" style="margin-top:10px;">Cancel</button>
+      </div>
+    `;
+
+    const picklist = overlay.querySelector('#suggesterPicklist');
+    const searchInput = overlay.querySelector('#suggesterSearchInput');
+    const countEl = overlay.querySelector('#suggesterSelectedCount');
+    const goBtn = overlay.querySelector('#suggesterGoBtn');
+    const playerSel = overlay.querySelector('#suggesterPlayerCount');
+
+    let maxP = 0;
+    ownedGames.forEach(g => { if (g.max && g.max > maxP && g.max <= 20) maxP = g.max; });
+    for (let n = 1; n <= Math.max(maxP, 8); n++){
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      playerSel.appendChild(opt);
+    }
+
+    function renderList(){
+      const q = searchInput.value.trim().toLowerCase();
+      picklist.innerHTML = '';
+      ownedGames.filter(g => !q || g.name.toLowerCase().includes(q)).forEach(g => {
+        const row = document.createElement('label');
+        row.className = 'suggester-pick-row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = selected.has(g.id);
+        cb.addEventListener('change', () => {
+          if (cb.checked) selected.add(g.id); else selected.delete(g.id);
+          updateCount();
+        });
+        const span = document.createElement('span');
+        span.textContent = g.name;
+        row.appendChild(cb);
+        row.appendChild(span);
+        picklist.appendChild(row);
+      });
+    }
+    function updateCount(){
+      countEl.textContent = selected.size;
+      goBtn.disabled = selected.size < 3;
+      goBtn.textContent = selected.size < 3 ? `Select at least 3 games` : `Get Suggestions`;
+    }
+    searchInput.addEventListener('input', renderList);
+    renderList();
+    updateCount();
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+
+    goBtn.addEventListener('click', () => {
+      const selectedGames = games.filter(g => selected.has(g.id));
+      const constraints = {
+        playerCount: playerSel.value ? Number(playerSel.value) : null,
+        minRating: overlay.querySelector('#suggesterMinRating').value ? Number(overlay.querySelector('#suggesterMinRating').value) : null,
+        minWeight: overlay.querySelector('#suggesterMinWeight').value ? Number(overlay.querySelector('#suggesterMinWeight').value) : null,
+        maxWeight: overlay.querySelector('#suggesterMaxWeight').value ? Number(overlay.querySelector('#suggesterMaxWeight').value) : null,
+      };
+      runSuggestionPipeline(overlay, selectedGames, constraints);
+    });
+  }
+
+  async function runSuggestionPipeline(overlay, selectedGames, constraints){
+    overlay.querySelector('.modal-box').innerHTML = `
+      <h3>🎲 Suggest New Games</h3>
+      <div class="suggester-status" id="suggesterStatus">Resolving candidate games from BGG...</div>
+    `;
+    const statusEl = overlay.querySelector('#suggesterStatus');
+
+    // build a weighted profile: categories/mechanics common across MORE of
+    // your selected games count for more when scoring candidates
+    const profile = {};
+    selectedGames.forEach(g => {
+      (g.themes || []).forEach(t => { profile[t] = (profile[t] || 0) + 1; });
+      (g.mechanics || []).forEach(m => { profile[m] = (profile[m] || 0) + 1; });
+    });
+
+    const ownedIds = new Set(games.map(g => String(g.id)));
+    const ownedNames = new Set(games.map(g => g.name.toLowerCase()));
+
+    // resolve candidate names to ids, skipping anything already owned by name
+    // (id-based de-dupe happens after resolution too, since names can differ slightly)
+    const candidateNames = SUGGESTION_CANDIDATE_NAMES.filter(n => !ownedNames.has(n.toLowerCase()));
+    const resolvedIds = [];
+    let resolvedCount = 0;
+    for (const name of candidateNames){
+      statusEl.textContent = `Resolving candidate games from BGG... (${resolvedCount}/${candidateNames.length})`;
+      try {
+        const id = await resolveNameToId(name);
+        if (id && !ownedIds.has(String(id)) && !resolvedIds.includes(id)) resolvedIds.push(id);
+      } catch(e){ /* skip this candidate on failure */ }
+      resolvedCount++;
+    }
+
+    if (!resolvedIds.length){
+      overlay.querySelector('.modal-box').innerHTML = `
+        <h3>🎲 Suggest New Games</h3>
+        <div class="suggester-status">Couldn't resolve any candidate games from BGG right now. Try again in a moment.</div>
+        <button class="modal-close" style="margin-top:10px;">Close</button>
+      `;
+      overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+      return;
+    }
+
+    // enrich candidates (weight/categories/mechanics/rating/rank) — reuses
+    // the same cache as the main library, so already-seen games are instant
+    statusEl.textContent = `Fetching details for ${resolvedIds.length} candidate games...`;
+    const candidates = resolvedIds.map(id => ({ id, weight: null, themes: null, mechanics: null, rating: null, rank: null }));
+    const idsNeeded = [];
+    candidates.forEach(c => {
+      const cached = getCachedGame(c.id);
+      if (cached){
+        c.weight = cached.weight; c.themes = cached.themes; c.mechanics = cached.mechanics || [];
+        c.name = cached.name; c.image = cached.image; c.rating = cached.rating; c.rank = cached.rank;
+      } else {
+        idsNeeded.push(c.id);
+      }
+    });
+
+    const batchSize = 20;
+    const batches = [];
+    for (let i = 0; i < idsNeeded.length; i += batchSize) batches.push(idsNeeded.slice(i, i + batchSize));
+    let done = 0;
+    await runPool(batches, BGG_WORKER_URL ? 6 : 3, async (batch, batchIndex) => {
+      const result = await fetchBatchWithRetry(batch, batchIndex);
+      done += batch.length;
+      statusEl.textContent = `Fetching details for candidate games... (${done}/${idsNeeded.length})`;
+      if (typeof result !== 'string') return;
+      const xml = new DOMParser().parseFromString(result, 'text/xml');
+      xml.querySelectorAll('item').forEach(item => {
+        const id = item.getAttribute('id');
+        const c = candidates.find(cd => String(cd.id) === String(id));
+        if (!c) return;
+        const nameEl = item.querySelector('name[type="primary"]') || item.querySelector('name');
+        c.name = nameEl ? nameEl.getAttribute('value') : null;
+        c.image = (item.querySelector('image') || {}).textContent || null;
+        c.themes = Array.from(item.querySelectorAll('link[type="boardgamecategory"]')).map(l => l.getAttribute('value'));
+        c.mechanics = Array.from(item.querySelectorAll('link[type="boardgamemechanic"]')).map(l => l.getAttribute('value'));
+        const weightEl = item.querySelector('statistics ratings averageweight');
+        c.weight = weightEl ? Number(weightEl.getAttribute('value')) : null;
+        const ratingEl = item.querySelector('statistics ratings average');
+        c.rating = ratingEl ? Number(ratingEl.getAttribute('value')) : null;
+        const rankEl = item.querySelector('rank[type="subtype"]');
+        const rankVal = rankEl ? rankEl.getAttribute('value') : null;
+        c.rank = (rankVal && rankVal !== 'Not Ranked') ? Number(rankVal) : 999999;
+        c.min = item.querySelector('minplayers') ? Number(item.querySelector('minplayers').getAttribute('value')) : null;
+        c.max = item.querySelector('maxplayers') ? Number(item.querySelector('maxplayers').getAttribute('value')) : null;
+        if (c.weight != null) setCachedGame(id, { weight: c.weight, themes: c.themes, mechanics: c.mechanics, type: 'standalone', name: c.name, image: c.image, rating: c.rating, rank: c.rank });
+      });
+    });
+
+    // apply hard filters, then score by weighted category/mechanic overlap,
+    // tiebreaking by BGG rank (lower = more popular/higher regarded)
+    let scored = candidates.filter(c => c.name && c.weight != null).map(c => {
+      const overlapScore = [...(c.themes||[]), ...(c.mechanics||[])]
+        .reduce((sum, tag) => sum + (profile[tag] || 0), 0);
+      const sharedTags = [...(c.themes||[]), ...(c.mechanics||[])].filter(tag => profile[tag]);
+      return { ...c, overlapScore, sharedTags: [...new Set(sharedTags)] };
+    });
+
+    if (constraints.playerCount != null){
+      scored = scored.filter(c => c.min != null && c.max != null && c.min <= constraints.playerCount && c.max >= constraints.playerCount);
+    }
+    if (constraints.minRating != null) scored = scored.filter(c => c.rating != null && c.rating >= constraints.minRating);
+    if (constraints.minWeight != null) scored = scored.filter(c => c.weight != null && c.weight >= constraints.minWeight);
+    if (constraints.maxWeight != null) scored = scored.filter(c => c.weight != null && c.weight <= constraints.maxWeight);
+
+    scored.sort((a, b) => (b.overlapScore - a.overlapScore) || ((a.rank||999999) - (b.rank||999999)));
+    const top10 = scored.slice(0, 10);
+
+    renderSuggesterResults(overlay, top10, scored.length);
+  }
+
+  function renderSuggesterResults(overlay, results, totalMatching){
+    const box = overlay.querySelector('.modal-box');
+    if (!results.length){
+      box.innerHTML = `
+        <h3>🎲 Suggest New Games</h3>
+        <div class="suggester-status">No candidates matched your filters. Try widening the weight range or rating threshold.</div>
+        <button class="modal-close" style="margin-top:10px;">Close</button>
+      `;
+      box.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+      return;
+    }
+    box.innerHTML = `
+      <h3>🎲 ${results.length} Suggestions</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-10px;margin-bottom:10px;">
+        Ranked by how well they match your selected games' themes/mechanics, then by BGG's own popularity ranking.
+        ${totalMatching > results.length ? `(${totalMatching} total matched your filters)` : ''}
+      </p>
+      <div id="suggesterResultsList"></div>
+      <button class="modal-close" style="margin-top:14px;">Close</button>
+    `;
+    const list = box.querySelector('#suggesterResultsList');
+    results.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'suggester-result-card';
+      const img = c.image ? `<img src="${escapeHtml(c.image)}" alt="">` : '';
+      const rankText = (c.rank && c.rank < 999999) ? `BGG rank #${c.rank}` : 'unranked';
+      row.innerHTML = `
+        ${img}
+        <div class="suggester-result-info">
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">${c.weight ? c.weight.toFixed(2) : '—'} wt · ${c.rating ? c.rating.toFixed(1) : '—'} ★ · ${rankText}</div>
+          <div class="why">Shares: ${c.sharedTags.slice(0,4).map(escapeHtml).join(', ') || 'general popularity'}</div>
+        </div>
+      `;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => window.open(`https://boardgamegeek.com/boardgame/${c.id}`, '_blank', 'noopener'));
+      list.appendChild(row);
+    });
+    box.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
   }
 
   // BGG's own color scale for rating hexagons: dark green (9-10), light
