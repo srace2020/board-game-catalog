@@ -727,7 +727,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v31</div>
+  <div class="eyebrow">Board Game Collection · build v32</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1010,13 +1010,13 @@ function showDebugError(msg){
       onSourcesChanged();
       showUsernameStatus(`Loaded ${rawGames.length} games for ${username}. Fetching weight & theme data from BGG before showing results...`, false);
       await enrichAllGames();
-      isEnriching = false;
       setDefaultRanges();
-      render();
       showUsernameStatus(`${username}'s collection is ready.`, false);
     } catch (e){
       showUsernameStatus(`Couldn't load "${username}": ${e.message}`, true);
     } finally {
+      isEnriching = false; // guarantee the loading state never gets permanently stuck, even on an unexpected error
+      render();
       addUsernameBtn.disabled = false;
     }
   }
@@ -1401,7 +1401,7 @@ function showDebugError(msg){
           g.description = cached.description || '';
           if (cached.year) g.year = cached.year;
           if (cached.type) g.type = cached.type;
-          cached.themes.forEach(c => allThemes.includes(c) || allThemes.push(c));
+          (cached.themes || []).forEach(c => allThemes.includes(c) || allThemes.push(c));
           (cached.mechanics || []).forEach(m => allMechanics.includes(m) || allMechanics.push(m));
           cacheHits++;
         }
