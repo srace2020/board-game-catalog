@@ -505,6 +505,73 @@
     text-align:center;
     padding-top:8px;
   }
+  .card-back-links{
+    display:flex;
+    gap:8px;
+    margin-top:4px;
+  }
+  .card-link-btn{
+    flex:1;
+    background:var(--felt-deep);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:8px 6px;
+    font-size:11.5px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    text-align:center;
+  }
+  .card-link-btn:hover{ background:var(--brick); }
+
+  /* ---------- rules modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:#000000a0;
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+  .modal-box{
+    background:var(--card);
+    color:var(--ink);
+    border-radius:10px;
+    padding:24px;
+    max-width:380px;
+    width:100%;
+    box-shadow:0 10px 30px #0008;
+  }
+  .modal-box h3{
+    font-family:'Poppins',sans-serif;
+    margin:0 0 16px;
+    font-size:17px;
+  }
+  .modal-box a{
+    display:block;
+    padding:12px 14px;
+    margin-bottom:10px;
+    background:#00000008;
+    border-radius:8px;
+    color:var(--ink);
+    text-decoration:none;
+    font-size:13.5px;
+    font-weight:600;
+  }
+  .modal-box a:hover{ background:var(--brick); color:#fff; }
+  .modal-close{
+    display:block;
+    width:100%;
+    margin-top:6px;
+    background:none;
+    border:1px solid #ccc;
+    border-radius:8px;
+    padding:10px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
   /* decorative pin-dot removed — redundant clutter now that rating hex + expansion badges carry the visual interest */
   .expansion-badge{
     position:absolute;
@@ -643,7 +710,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v27</div>
+  <div class="eyebrow">Board Game Collection · build v29</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -916,7 +983,11 @@ function showDebugError(msg){
         showUsernameStatus(`No public board game collection found for "${username}" — check the spelling, or that their BGG collection is set to public.`, true);
         return;
       }
-      sources.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName: username, username, rawGames });
+      const isFirstSource = sources.length === 0;
+      const newSrc = { id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2), ownerName: username, username, rawGames };
+      sources.push(newSrc);
+      addSourceGames(newSrc);
+      if (isFirstSource) setDefaultRanges();
       usernameInput.value = '';
       isEnriching = true;
       onSourcesChanged();
@@ -1006,7 +1077,6 @@ function showDebugError(msg){
   }
 
   function onSourcesChanged(){
-    mergeSources();
     renderSourcesList();
     sourcesBox.style.display = sources.length ? 'block' : 'none';
     panel.classList.toggle('show', games.length > 0);
@@ -1014,7 +1084,6 @@ function showDebugError(msg){
     resultsBar.style.display = games.length ? 'flex' : 'none';
     if (sources.length > 1) renderOwnerChips();
     buildPlayerOptions();
-    setDefaultRanges();
     render();
   }
 
@@ -1030,6 +1099,7 @@ function showDebugError(msg){
       removeBtn.title = `Remove ${src.ownerName}'s collection`;
       removeBtn.addEventListener('click', () => {
         sources = sources.filter(s => s.id !== src.id);
+        removeSourceGames(src);
         activeOwners.delete(src.ownerName);
         onSourcesChanged();
       });
@@ -1061,28 +1131,32 @@ function showDebugError(msg){
     });
   }
 
-  // merge every source's games into one library, tracking who owns each copy.
-  // games are matched by BGG objectid so the same game owned by two people
-  // becomes one entry tagged with both owners.
-  function mergeSources(){
-    const merged = new Map(); // key -> game record
-    sources.forEach(src => {
-      src.rawGames.forEach(g => {
-        const key = String(g.id);
-        if (!merged.has(key)){
-          merged.set(key, { ...g, owners: [src.ownerName] });
-        } else {
-          const existing = merged.get(key);
-          if (!existing.owners.includes(src.ownerName)) existing.owners.push(src.ownerName);
-          // keep whichever copy already has weight/themes filled in, if either does
-          if (!existing.weight && g.weight) existing.weight = g.weight;
-          if (!existing.themes && g.themes) existing.themes = g.themes;
-          if (!existing.thumbnail && g.thumbnail) existing.thumbnail = g.thumbnail;
-          if (!existing.image && g.image) existing.image = g.image;
-        }
-      });
+  // merges ONE newly-added source's games into the existing games array,
+  // preserving any enrichment (weight/themes/mechanics/description) already
+  // present on games that were already loaded from a previous source
+  function addSourceGames(src){
+    src.rawGames.forEach(g => {
+      const key = String(g.id);
+      const existing = games.find(gm => String(gm.id) === key);
+      if (!existing){
+        games.push({ ...g, owners: [src.ownerName] });
+      } else {
+        if (!existing.owners.includes(src.ownerName)) existing.owners.push(src.ownerName);
+        // only fill in gaps — never clobber data already fetched from BGG
+        if (existing.weight == null && g.weight != null) existing.weight = g.weight;
+        if (!existing.thumbnail && g.thumbnail) existing.thumbnail = g.thumbnail;
+        if (!existing.image && g.image) existing.image = g.image;
+      }
     });
-    games = Array.from(merged.values());
+  }
+
+  // removes a source's ownership tag from every game, dropping any game left
+  // with zero remaining owners — everything else (weight/themes/mechanics/
+  // description on games still owned by someone else) is left untouched
+  function removeSourceGames(src){
+    games = games
+      .map(g => ({ ...g, owners: g.owners.filter(o => o !== src.ownerName) }))
+      .filter(g => g.owners.length > 0);
   }
 
   function buildPlayerOptions(){
@@ -1671,13 +1745,43 @@ function showDebugError(msg){
             ${descHtml}
             ${allMechanicsHtml}
             ${allThemesHtml}
-            <div class="card-back-hint">Click to flip back</div>
+            <div class="card-back-links">
+              <button class="card-link-btn how-to-play-btn" data-id="${escapeHtml(String(g.id))}">▶ How to Play</button>
+              <button class="card-link-btn rules-btn" data-id="${escapeHtml(String(g.id))}" data-name="${escapeHtml(g.name)}">📖 Rules</button>
+            </div>
+            <div class="card-back-hint">Click card to flip back</div>
           </div>
         </div>
       `;
       card.addEventListener('click', () => card.classList.toggle('flipped'));
+      card.querySelector('.how-to-play-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.open(`https://boardgamegeek.com/boardgame/${g.id}/videos`, '_blank', 'noopener');
+      });
+      card.querySelector('.rules-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openRulesModal(g.id, g.name);
+      });
       grid.appendChild(card);
     });
+  }
+
+  function openRulesModal(gameId, gameName){
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const filesUrl = `https://boardgamegeek.com/boardgame/${gameId}/files`;
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(gameName + ' rulebook pdf')}`;
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <h3>Rules for ${escapeHtml(gameName)}</h3>
+        <a href="${filesUrl}" target="_blank" rel="noopener">📁 BGG Files (rulebooks &amp; reference sheets)</a>
+        <a href="${searchUrl}" target="_blank" rel="noopener">🔍 Search the web for a rules PDF</a>
+        <button class="modal-close">Close</button>
+      </div>
+    `;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
   }
 
   // BGG's own color scale for rating hexagons: dark green (9-10), light
