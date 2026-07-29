@@ -710,7 +710,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v29</div>
+  <div class="eyebrow">Board Game Collection · build v30</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1756,7 +1756,8 @@ function showDebugError(msg){
       card.addEventListener('click', () => card.classList.toggle('flipped'));
       card.querySelector('.how-to-play-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        window.open(`https://boardgamegeek.com/boardgame/${g.id}/videos`, '_blank', 'noopener');
+        const slug = slugify(g.name);
+        window.open(`https://boardgamegeek.com/boardgame/${g.id}/${slug}/videos/instructional?pageid=1&languageid=2184&sort=hot`, '_blank', 'noopener');
       });
       card.querySelector('.rules-btn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1769,7 +1770,7 @@ function showDebugError(msg){
   function openRulesModal(gameId, gameName){
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    const filesUrl = `https://boardgamegeek.com/boardgame/${gameId}/files`;
+    const filesUrl = `https://boardgamegeek.com/boardgame/${gameId}/${slugify(gameName)}/files`;
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(gameName + ' rulebook pdf')}`;
     overlay.innerHTML = `
       <div class="modal-box">
@@ -1789,6 +1790,19 @@ function showDebugError(msg){
   // BGG descriptions come through with embedded markup (mostly <br/> for line
   // breaks). textContent already decodes XML entities, so this just turns
   // <br/> into real newlines and strips any other stray tags before display.
+  // approximates BGG's own URL slug pattern (e.g. "Camel Up (Second Edition)"
+  // -> "camel-up-second-edition") — even an imperfect guess should still
+  // resolve, since BGG's routing keys off the numeric id in the path
+  function slugify(name){
+    return name
+      .toLowerCase()
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+
   function cleanDescription(raw){
     if (!raw) return '';
     let text = raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+(>|$)/g, '');
