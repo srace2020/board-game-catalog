@@ -818,7 +818,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v34</div>
+  <div class="eyebrow">Board Game Collection · build v35</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1962,7 +1962,7 @@ function showDebugError(msg){
     const cached = getCachedIdForName(name);
     if (cached) return cached;
     const url = `${BGG_WORKER_URL}?search=${encodeURIComponent(name)}`;
-    const res = await fetchWithRetry429(url, 10000, 2);
+    const res = await fetchWithRetry429(url, 10000, 4);
     if (!res.ok) return null;
     const text = await res.text();
     const xml = new DOMParser().parseFromString(text, 'text/xml');
@@ -2104,11 +2104,13 @@ function showDebugError(msg){
     const candidateNames = SUGGESTION_CANDIDATE_NAMES.filter(n => !ownedNames.has(n.toLowerCase()));
     const resolvedIds = [];
     let resolvedCount = 0;
-    await runPool(candidateNames, 6, async (name) => {
+    let resolveFailures = 0;
+    await runPool(candidateNames, 4, async (name) => {
       try {
         const id = await resolveNameToId(name);
         if (id && !ownedIds.has(String(id)) && !resolvedIds.includes(id)) resolvedIds.push(id);
-      } catch(e){ /* skip this candidate on failure */ }
+        else if (!id) resolveFailures++;
+      } catch(e){ resolveFailures++; }
       resolvedCount++;
       statusEl.textContent = `Resolving candidate games from BGG... (${resolvedCount}/${candidateNames.length})`;
     });
@@ -2195,15 +2197,22 @@ function showDebugError(msg){
     scored.sort((a, b) => (b.overlapScore - a.overlapScore) || ((a.rank||999999) - (b.rank||999999)));
     const top10 = scored.slice(0, 10);
 
-    renderSuggesterResults(overlay, top10, scored.length);
+    renderSuggesterResults(overlay, top10, scored.length, { resolvedCount: resolvedIds.length, totalCandidates: candidateNames.length, resolveFailures });
   }
 
-  function renderSuggesterResults(overlay, results, totalMatching){
+  function renderSuggesterResults(overlay, results, totalMatching, stats){
     const box = overlay.querySelector('.modal-box');
     if (!results.length){
+      const resolveStat = stats ? `Resolved ${stats.resolvedCount}/${stats.totalCandidates} candidate games from BGG (${stats.resolveFailures} failed to resolve).` : '';
       box.innerHTML = `
         <h3>🎲 Suggest New Games</h3>
-        <div class="suggester-status">No candidates matched your filters. Try widening the weight range or rating threshold.</div>
+        <div class="suggester-status">
+          No candidates matched.<br>
+          ${resolveStat}<br>
+          ${stats && stats.resolveFailures > stats.totalCandidates * 0.3
+            ? 'A lot of lookups failed — likely BGG rate-limiting. Try again in a minute.'
+            : 'Try widening the weight range or rating threshold, or picking a broader mix of games.'}
+        </div>
         <button class="modal-close" style="margin-top:10px;">Close</button>
       `;
       box.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
