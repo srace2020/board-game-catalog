@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Collection Catalog — BGG Filter</title>
+<title>Group Game Shelf — BGG Group Library</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- PapaParse removed: this version reads collections directly from BGG via username -->
 <style>
   :root{
@@ -24,6 +24,10 @@
     --focus:#efa3a7;
   }
   *{box-sizing:border-box;}
+  [tabindex]:focus-visible, .chip:focus-visible, .gcard:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible{
+    outline:3px solid var(--focus);
+    outline-offset:2px;
+  }
   html,body{margin:0;padding:0;}
   body{
     background:
@@ -60,12 +64,13 @@
     margin-bottom:10px;
   }
   h1{
-    font-family:'Poppins', sans-serif;
-    font-weight:800;
-    font-size:clamp(32px,5vw,52px);
+    font-family:'Anton', sans-serif;
+    font-weight:400;
+    font-size:clamp(34px,5.5vw,56px);
     margin:0;
     color:var(--card);
-    letter-spacing:-.5px;
+    letter-spacing:.5px;
+    text-transform:uppercase;
   }
   .tagline{
     font-size:15px;
@@ -171,10 +176,10 @@
     cursor:pointer;
     font-size:15px;
     line-height:1;
-    padding:4px 6px;
+    padding:6px 8px;
     border-radius:50%;
   }
-  .source-chip .src-remove:hover{background:var(--brick);color:#fff;}
+  .source-chip .src-remove:hover{background:var(--brick-dark);color:#fff;}
 
   .owner-tag{
     font-size:10.5px;
@@ -313,8 +318,8 @@
     font-family:'IBM Plex Sans',sans-serif;
   }
   .toggle-btn.active{
-    background:var(--brick);
-    border-color:var(--brick);
+    background:var(--brick-dark);
+    border-color:var(--brick-dark);
     color:#fff5ec;
   }
   .toggle-btn:hover:not(.active){border-color:var(--gold);}
@@ -404,8 +409,8 @@
     user-select:none;
   }
   .chip.active{
-    background:var(--brick);
-    border-color:var(--brick);
+    background:var(--brick-dark);
+    border-color:var(--brick-dark);
     color:#fff5ec;
   }
   .chip.unreachable{
@@ -562,7 +567,7 @@
     font-family:'IBM Plex Sans',sans-serif;
     text-align:center;
   }
-  .card-link-btn:hover{ background:var(--brick); }
+  .card-link-btn:hover{ background:var(--brick-dark); }
 
   /* ---------- rules modal ---------- */
   .modal-overlay{
@@ -637,7 +642,7 @@
   }
   .suggester-go-btn{
     width:100%;
-    background:var(--brick);
+    background:var(--brick-dark);
     color:#fff;
     border:none;
     padding:12px;
@@ -688,7 +693,7 @@
     font-size:13.5px;
     font-weight:600;
   }
-  .modal-box a:hover{ background:var(--brick); color:#fff; }
+  .modal-box a:hover{ background:var(--brick-dark); color:#fff; }
   .modal-close{
     display:block;
     width:100%;
@@ -706,7 +711,7 @@
   .expansion-badge{
     position:absolute;
     top:10px; right:10px;
-    background:var(--brick);
+    background:var(--brick-dark);
     color:#fff;
     font-size:10px;
     font-weight:700;
@@ -828,20 +833,24 @@
     padding-top:20px;
     border-top:1px solid #2c2c4e80;
   }
-  footer .bgg-logo{
-    height:28px;
-    width:auto;
+  footer .bgg-logo-wrap{
     display:inline-block;
-    margin-bottom:12px;
-    opacity:.9;
+    background:#ffffff;
+    padding:8px 14px;
+    border-radius:8px;
+    margin-bottom:14px;
+  }
+  footer .bgg-logo{
+    height:36px;
+    width:auto;
+    display:block;
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v42</div>
-  <h1>Collection Catalog</h1>
+  <h1>Group Game Shelf</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
 
@@ -856,7 +865,7 @@
     <div class="dz-title">Add a BGG username</div>
     <div class="dz-sub" style="margin-bottom:14px;">Their collection must be set to public on BGG. Add one username per person to build a group library.</div>
     <div class="username-row">
-      <input type="text" id="usernameInput" placeholder="e.g. fishman2020">
+      <input type="text" id="usernameInput" placeholder="BGG Username">
       <button class="btn-enrich" id="addUsernameBtn">Add</button>
     </div>
     <div class="username-status" id="usernameStatus"></div>
@@ -936,7 +945,7 @@
     </div>
 
     <div class="theme-box collapsed" id="themeBox">
-      <div class="theme-head" data-toggle="themeBox">
+      <div class="theme-head" data-toggle="themeBox" role="button" tabindex="0" aria-expanded="false" aria-controls="themeBox">
         <span class="lbl"><span class="theme-chevron">▼</span>Themes / Categories</span>
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="theme-status" id="themeStatus"></span>
@@ -952,7 +961,7 @@
     </div>
 
     <div class="theme-box collapsed" id="mechanicBox" style="display:none;">
-      <div class="theme-head" data-toggle="mechanicBox">
+      <div class="theme-head" data-toggle="mechanicBox" role="button" tabindex="0" aria-expanded="false" aria-controls="mechanicBox">
         <span class="lbl"><span class="theme-chevron">▼</span>Mechanics</span>
         <span class="theme-status" id="mechanicStatus"></span>
       </div>
@@ -963,7 +972,7 @@
     </div>
 
     <div class="theme-box collapsed" id="ownerBox" style="display:none;">
-      <div class="theme-head" data-toggle="ownerBox">
+      <div class="theme-head" data-toggle="ownerBox" role="button" tabindex="0" aria-expanded="false" aria-controls="ownerBox">
         <span class="lbl"><span class="theme-chevron">▼</span>Owned by</span>
       </div>
       <div class="collapse-body">
@@ -1002,9 +1011,11 @@
 </div>
 
 <footer>
+  <div class="bgg-logo-wrap">
   <img class="bgg-logo" src="data:image/png;base64,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" alt="Powered by BGG">
-  <p>Runs entirely in your browser. Collection and game data is fetched live from BGG via your own Cloudflare Worker — nothing is stored on any server.</p>
-  <p><button id="clearCacheBtn" style="background:none;border:none;color:#62628f;text-decoration:underline;cursor:pointer;font-size:12px;font-family:inherit;padding:0;">Clear cached game data</button></p>
+  </div>
+  <p><button id="clearCacheBtn" style="background:none;border:none;color:#8989c8;text-decoration:underline;cursor:pointer;font-size:12px;font-family:inherit;padding:0;">Clear cached game data</button></p>
+  <p style="font-size:10px;opacity:.5;">build v48</p>
 </footer>
 
 <script>
@@ -1078,9 +1089,18 @@ function showDebugError(msg){
 
   // collapsible accordion sections (Themes/Mechanics/Owned by)
   document.querySelectorAll('[data-toggle]').forEach(header => {
-    header.addEventListener('click', () => {
+    function toggleSection(){
       const box = document.getElementById(header.dataset.toggle);
-      if (box) box.classList.toggle('collapsed');
+      if (!box) return;
+      box.classList.toggle('collapsed');
+      header.setAttribute('aria-expanded', String(!box.classList.contains('collapsed')));
+    }
+    header.addEventListener('click', toggleSection);
+    header.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){
+        e.preventDefault(); // prevent page scroll on Space
+        toggleSection();
+      }
     });
   });
   const themeStatus = document.getElementById('themeStatus');
@@ -1271,6 +1291,22 @@ function showDebugError(msg){
     });
   }
 
+  // makes a dynamically-created filter chip keyboard-operable (Enter/Space)
+  // with proper checkbox semantics for screen readers, since these are
+  // toggleable filters, not simple links/buttons
+  function makeChipAccessible(chip, isActive, onToggle){
+    chip.setAttribute('role', 'checkbox');
+    chip.setAttribute('aria-checked', String(isActive));
+    chip.setAttribute('tabindex', '0');
+    chip.addEventListener('click', onToggle);
+    chip.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        onToggle();
+      }
+    });
+  }
+
   function renderOwnerChips(){
     const owners = sources.map(s => s.ownerName);
     const reachableGames = getFiltered({ skipOwners: true });
@@ -1285,7 +1321,7 @@ function showDebugError(msg){
       chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
       chip.textContent = owner;
       chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
-      chip.addEventListener('click', () => {
+      makeChipAccessible(chip, isActive, () => {
         if (activeOwners.has(owner)) activeOwners.delete(owner);
         else activeOwners.add(owner);
         render();
@@ -1752,7 +1788,7 @@ function showDebugError(msg){
       chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
       chip.textContent = theme;
       chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
-      chip.addEventListener('click', () => {
+      makeChipAccessible(chip, isActive, () => {
         if (activeThemes.has(theme)) activeThemes.delete(theme);
         else activeThemes.add(theme);
         render();
@@ -1786,7 +1822,7 @@ function showDebugError(msg){
       chip.className = 'chip' + (isActive ? ' active' : '') + (!isReachable ? ' unreachable' : '');
       chip.textContent = mechanic;
       chip.title = (!isReachable && isActive) ? 'No games match this combined with your other filters right now' : '';
-      chip.addEventListener('click', () => {
+      makeChipAccessible(chip, isActive, () => {
         if (activeMechanics.has(mechanic)) activeMechanics.delete(mechanic);
         else activeMechanics.add(mechanic);
         render();
@@ -1909,6 +1945,9 @@ function showDebugError(msg){
     filtered.forEach(g => {
       const card = document.createElement('div');
       card.className = 'gcard';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', `${g.name}. Press Enter to flip for details.`);
       const players = (g.min != null && g.max != null) ? `${g.min}–${g.max} players` : 'players n/a';
       const weight = (g.weight != null && g.weight > 0) ? g.weight.toFixed(2) : '—';
       const themesHtml = (g.themes && g.themes.length)
@@ -1976,6 +2015,13 @@ function showDebugError(msg){
         </div>
       `;
       card.addEventListener('click', () => card.classList.toggle('flipped'));
+      card.addEventListener('keydown', (e) => {
+        if (e.target !== card) return; // don't fire when a nested button (How to Play/Rules) has focus
+        if (e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          card.classList.toggle('flipped');
+        }
+      });
       card.querySelector('.how-to-play-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         const slug = slugify(g.name);
@@ -1989,7 +2035,41 @@ function showDebugError(msg){
     });
   }
 
+  // gives any modal overlay proper dialog semantics: role=dialog, labelled by
+  // its heading, focus moved in on open, Escape closes it, and focus is
+  // restored to whatever triggered it afterward — covers click-outside,
+  // Escape, and close-button dismissal via a MutationObserver so it works
+  // no matter how the overlay ends up getting removed
+  function setupModalA11y(overlay, restoreFocusEl){
+    const box = overlay.querySelector('.modal-box');
+    if (!box) return;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    const heading = box.querySelector('h3');
+    if (heading){
+      if (!heading.id) heading.id = 'modalTitle_' + Math.random().toString(36).slice(2);
+      box.setAttribute('aria-labelledby', heading.id);
+    }
+    box.setAttribute('tabindex', '-1');
+    box.focus();
+
+    function onKeydown(e){
+      if (e.key === 'Escape') overlay.remove();
+    }
+    document.addEventListener('keydown', onKeydown);
+
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(overlay)){
+        document.removeEventListener('keydown', onKeydown);
+        observer.disconnect();
+        if (restoreFocusEl) restoreFocusEl.focus();
+      }
+    });
+    observer.observe(document.body, { childList: true });
+  }
+
   function openRulesModal(gameId, gameName){
+    const triggerEl = document.activeElement;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     const filesUrl = `https://boardgamegeek.com/boardgame/${gameId}/${slugify(gameName)}/files`;
@@ -2005,6 +2085,7 @@ function showDebugError(msg){
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
     document.body.appendChild(overlay);
+    setupModalA11y(overlay, triggerEl);
   }
 
   // ---------- Suggest New Games ----------
@@ -2042,12 +2123,25 @@ function showDebugError(msg){
     return id;
   }
 
+  // the suggester modal swaps its .modal-box innerHTML across several stages
+  // (picker → loading → results) — re-link aria-labelledby to whichever h3
+  // currently exists each time, without re-registering the Escape listener
+  function relinkModalHeading(box){
+    const heading = box.querySelector('h3');
+    if (heading){
+      heading.id = 'modalTitle_' + Math.random().toString(36).slice(2);
+      box.setAttribute('aria-labelledby', heading.id);
+    }
+  }
+
   function openSuggesterModal(){
+    const triggerEl = document.activeElement;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'suggesterOverlay';
     document.body.appendChild(overlay);
     renderSuggesterPicker(overlay);
+    setupModalA11y(overlay, triggerEl);
   }
 
   function renderSuggesterPicker(overlay){
@@ -2150,6 +2244,7 @@ function showDebugError(msg){
       <h3>🎲 Suggest New Games</h3>
       <div class="suggester-status" id="suggesterStatus">Resolving candidate games from BGG...</div>
     `;
+    relinkModalHeading(overlay.querySelector('.modal-box'));
     const statusEl = overlay.querySelector('#suggesterStatus');
 
     // build a weighted profile: categories/mechanics common across MORE of
@@ -2293,6 +2388,7 @@ function showDebugError(msg){
         <button class="modal-close" style="margin-top:10px;">Close</button>
       `;
       box.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+      relinkModalHeading(box);
       return;
     }
     box.innerHTML = `
@@ -2304,11 +2400,12 @@ function showDebugError(msg){
       <div id="suggesterResultsList"></div>
       <button class="modal-close" style="margin-top:14px;">Close</button>
     `;
+    relinkModalHeading(box);
     const list = box.querySelector('#suggesterResultsList');
     results.forEach(c => {
       const row = document.createElement('div');
       row.className = 'suggester-result-card';
-      const img = c.image ? `<img src="${escapeHtml(c.image)}" alt="">` : '';
+      const img = c.image ? `<img src="${escapeHtml(c.image)}" alt="${escapeHtml(c.name)} box art">` : '';
       const rankText = (c.rank && c.rank < 999999) ? `BGG rank #${c.rank}` : 'unranked';
       row.innerHTML = `
         ${img}
@@ -2362,10 +2459,10 @@ function showDebugError(msg){
   function ratingColor(r){
     const n = Math.floor(r);
     if (n >= 9) return '#1B7943';
-    if (n === 8) return '#2ECC8F';
-    if (n === 7) return '#2196D8';
+    if (n === 8) return '#1E855D'; // darkened from #2ECC8F — original failed WCAG contrast with white text
+    if (n === 7) return '#1A78AD'; // darkened from #2196D8 — same reason
     if (n >= 5) return '#55679E';
-    if (n >= 3) return '#DC4C64';
+    if (n >= 3) return '#C6445A'; // darkened from #DC4C64 — same reason
     return '#C81F3C';
   }
 
