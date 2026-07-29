@@ -454,7 +454,7 @@
   .gcard{
     perspective:1200px;
     cursor:pointer;
-    height:340px;
+    height:440px;
   }
   .card-flip-inner{
     position:relative;
@@ -503,7 +503,9 @@
     flex-shrink:0;
     display:flex;
     flex-direction:column;
-    gap:8px;
+    gap:6px;
+    max-height:190px;
+    overflow-y:auto;
   }
   .card-back-scroll{
     flex:1;
@@ -736,7 +738,7 @@
   .gcard .gthumb{
     display:block;
     width:100%;
-    height:120px;
+    height:190px;
     object-fit:cover;
     border-radius:6px;
     background:#eee;
@@ -837,7 +839,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v37</div>
+  <div class="eyebrow">Board Game Collection · build v40</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -1487,7 +1489,7 @@ function showDebugError(msg){
   // from BGG, there's no need to ever ask again. Dramatically speeds up
   // reloading the same collection, or adding a second person whose games
   // overlap with someone already loaded.
-  const CACHE_PREFIX = 'bgg_catalog_cache_v2:'; // bumped: v1 entries predate description/year fields
+  const CACHE_PREFIX = 'bgg_catalog_cache_v3:'; // bumped: v2 entries predate min/max player counts
   function getCachedGame(id){
     try {
       const raw = localStorage.getItem(CACHE_PREFIX + id);
@@ -1631,7 +1633,7 @@ function showDebugError(msg){
           // only cache once we actually have a real weight — a game with no
           // weight yet might just be lightly-rated on BGG (retry-worthy),
           // not permanently un-enrichable, so don't lock in a null forever
-          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type, description: g.description, year: g.year, name: g.name, image: g.image || g.thumbnail, rating: g.rating, rank: g.rank });
+          if (g.weight != null) setCachedGame(id, { weight: g.weight, themes: g.themes, mechanics: g.mechanics, type: g.type, description: g.description, year: g.year, name: g.name, image: g.image || g.thumbnail, rating: g.rating, rank: g.rank, min: g.min, max: g.max });
         }
       });
       return items.length;
@@ -2168,6 +2170,7 @@ function showDebugError(msg){
       if (cached){
         c.weight = cached.weight; c.themes = cached.themes; c.mechanics = cached.mechanics || [];
         c.name = cached.name; c.image = cached.image; c.rating = cached.rating; c.rank = cached.rank;
+        c.min = cached.min; c.max = cached.max;
       } else {
         idsNeeded.push(c.id);
       }
@@ -2201,7 +2204,7 @@ function showDebugError(msg){
         c.rank = (rankVal && rankVal !== 'Not Ranked') ? Number(rankVal) : 999999;
         c.min = item.querySelector('minplayers') ? Number(item.querySelector('minplayers').getAttribute('value')) : null;
         c.max = item.querySelector('maxplayers') ? Number(item.querySelector('maxplayers').getAttribute('value')) : null;
-        if (c.weight != null) setCachedGame(id, { weight: c.weight, themes: c.themes, mechanics: c.mechanics, type: 'standalone', name: c.name, image: c.image, rating: c.rating, rank: c.rank });
+        if (c.weight != null) setCachedGame(id, { weight: c.weight, themes: c.themes, mechanics: c.mechanics, type: 'standalone', name: c.name, image: c.image, rating: c.rating, rank: c.rank, min: c.min, max: c.max });
       });
     });
 
