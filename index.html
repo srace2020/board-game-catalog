@@ -330,7 +330,26 @@
     justify-content:space-between;
     flex-wrap:wrap;
     gap:10px;
-    margin-bottom:12px;
+    margin-bottom:0;
+    cursor:pointer;
+    user-select:none;
+    padding-bottom:12px;
+  }
+  .theme-chevron{
+    display:inline-block;
+    transition:transform .2s;
+    margin-right:6px;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .theme-box.collapsed .theme-chevron{ transform:rotate(-90deg); }
+  .collapse-body{
+    overflow:hidden;
+    max-height:600px;
+    transition:max-height .25s ease;
+  }
+  .theme-box.collapsed .collapse-body{
+    max-height:0;
   }
   .theme-head .lbl{
     font-family:'IBM Plex Mono',monospace;
@@ -818,7 +837,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v35</div>
+  <div class="eyebrow">Board Game Collection · build v37</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -900,37 +919,43 @@
 
     </div>
 
-    <div class="theme-box">
-      <div class="theme-head">
-        <span class="lbl">Themes / Categories</span>
+    <div class="theme-box collapsed" id="themeBox">
+      <div class="theme-head" data-toggle="themeBox">
+        <span class="lbl"><span class="theme-chevron">▼</span>Themes / Categories</span>
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="theme-status" id="themeStatus"></span>
           <button class="btn-enrich" id="enrichBtn" style="display:none;">Retry failed lookups</button>
         </div>
       </div>
-      <input type="text" id="themeSearchInput" class="chip-search" placeholder="Filter categories (e.g. spa)" style="display:none;">
-      <div id="themeArea">
-        <p class="theme-empty">Weight and category data loads automatically from BGG as soon as a collection is added — no action needed here.</p>
+      <div class="collapse-body">
+        <input type="text" id="themeSearchInput" class="chip-search" placeholder="Filter categories (e.g. spa)" style="display:none;">
+        <div id="themeArea">
+          <p class="theme-empty">Weight and category data loads automatically from BGG as soon as a collection is added — no action needed here.</p>
+        </div>
       </div>
     </div>
 
-    <div class="theme-box" id="mechanicBox" style="display:none;">
-      <div class="theme-head">
-        <span class="lbl">Mechanics</span>
+    <div class="theme-box collapsed" id="mechanicBox" style="display:none;">
+      <div class="theme-head" data-toggle="mechanicBox">
+        <span class="lbl"><span class="theme-chevron">▼</span>Mechanics</span>
         <span class="theme-status" id="mechanicStatus"></span>
       </div>
-      <input type="text" id="mechanicSearchInput" class="chip-search" placeholder="Filter mechanics (e.g. dice)">
-      <div id="mechanicArea"></div>
+      <div class="collapse-body">
+        <input type="text" id="mechanicSearchInput" class="chip-search" placeholder="Filter mechanics (e.g. dice)">
+        <div id="mechanicArea"></div>
+      </div>
     </div>
 
-    <div class="theme-box" id="ownerBox" style="display:none;">
-      <div class="theme-head">
-        <span class="lbl">Owned by</span>
+    <div class="theme-box collapsed" id="ownerBox" style="display:none;">
+      <div class="theme-head" data-toggle="ownerBox">
+        <span class="lbl"><span class="theme-chevron">▼</span>Owned by</span>
       </div>
-      <div id="ownerArea" class="theme-chips"></div>
-      <div class="checkbox-row" style="margin-top:14px;">
-        <input type="checkbox" id="onlySharedGames">
-        <label for="onlySharedGames">Only show games owned by more than one person (potential duplicates)</label>
+      <div class="collapse-body">
+        <div id="ownerArea" class="theme-chips"></div>
+        <div class="checkbox-row" style="margin-top:14px;">
+          <input type="checkbox" id="onlySharedGames">
+          <label for="onlySharedGames">Only show games owned by more than one person (potential duplicates)</label>
+        </div>
       </div>
     </div>
   </div>
@@ -1031,6 +1056,14 @@ function showDebugError(msg){
   const enrichBtn = document.getElementById('enrichBtn');
   const suggestBtn = document.getElementById('suggestBtn');
   suggestBtn.addEventListener('click', openSuggesterModal);
+
+  // collapsible accordion sections (Themes/Mechanics/Owned by)
+  document.querySelectorAll('[data-toggle]').forEach(header => {
+    header.addEventListener('click', () => {
+      const box = document.getElementById(header.dataset.toggle);
+      if (box) box.classList.toggle('collapsed');
+    });
+  });
   const themeStatus = document.getElementById('themeStatus');
   const themeArea = document.getElementById('themeArea');
   const mechanicBox = document.getElementById('mechanicBox');
@@ -2185,7 +2218,9 @@ function showDebugError(msg){
     // zero shared themes/mechanics would still show up sorted by raw BGG
     // rank alone, which just surfaces whatever's currently trendy on BGG
     // regardless of actual fit
+    const beforeOverlapCount = scored.length;
     scored = scored.filter(c => c.overlapScore > 0);
+    const afterOverlapCount = scored.length;
 
     if (constraints.playerCount != null){
       scored = scored.filter(c => c.min != null && c.max != null && c.min <= constraints.playerCount && c.max >= constraints.playerCount);
@@ -2193,25 +2228,35 @@ function showDebugError(msg){
     if (constraints.minRating != null) scored = scored.filter(c => c.rating != null && c.rating >= constraints.minRating);
     if (constraints.minWeight != null) scored = scored.filter(c => c.weight != null && c.weight >= constraints.minWeight);
     if (constraints.maxWeight != null) scored = scored.filter(c => c.weight != null && c.weight <= constraints.maxWeight);
+    const afterConstraintsCount = scored.length;
 
     scored.sort((a, b) => (b.overlapScore - a.overlapScore) || ((a.rank||999999) - (b.rank||999999)));
     const top10 = scored.slice(0, 10);
 
-    renderSuggesterResults(overlay, top10, scored.length, { resolvedCount: resolvedIds.length, totalCandidates: candidateNames.length, resolveFailures });
+    renderSuggesterResults(overlay, top10, scored.length, {
+      resolvedCount: resolvedIds.length, totalCandidates: candidateNames.length, resolveFailures,
+      beforeOverlapCount, afterOverlapCount, afterConstraintsCount
+    });
   }
 
   function renderSuggesterResults(overlay, results, totalMatching, stats){
     const box = overlay.querySelector('.modal-box');
     if (!results.length){
-      const resolveStat = stats ? `Resolved ${stats.resolvedCount}/${stats.totalCandidates} candidate games from BGG (${stats.resolveFailures} failed to resolve).` : '';
+      const resolveStat = stats ? `Resolved ${stats.resolvedCount}/${stats.totalCandidates} candidate games from BGG (${stats.resolveFailures} failed).` : '';
+      let stageMsg = '';
+      if (stats){
+        if (stats.beforeOverlapCount === 0){
+          stageMsg = 'None of the candidates had usable weight/category data — likely a data-fetch issue. Try again in a moment.';
+        } else if (stats.afterOverlapCount === 0){
+          stageMsg = `${stats.beforeOverlapCount} candidates had data, but none shared any themes or mechanics with your selected games. Try picking a broader or more varied set of games.`;
+        } else if (stats.afterConstraintsCount === 0){
+          stageMsg = `${stats.afterOverlapCount} candidates shared real themes/mechanics with your picks, but none matched your player count / rating / weight filters. Try widening those.`;
+        }
+      }
       box.innerHTML = `
         <h3>🎲 Suggest New Games</h3>
         <div class="suggester-status">
-          No candidates matched.<br>
-          ${resolveStat}<br>
-          ${stats && stats.resolveFailures > stats.totalCandidates * 0.3
-            ? 'A lot of lookups failed — likely BGG rate-limiting. Try again in a minute.'
-            : 'Try widening the weight range or rating threshold, or picking a broader mix of games.'}
+          No candidates matched.<br>${resolveStat}<br>${stageMsg}
         </div>
         <button class="modal-close" style="margin-top:10px;">Close</button>
       `;
