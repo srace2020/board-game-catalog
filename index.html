@@ -818,7 +818,7 @@
 <body>
 
 <header>
-  <div class="eyebrow">Board Game Collection · build v33</div>
+  <div class="eyebrow">Board Game Collection · build v34</div>
   <h1>Collection Catalog</h1>
   <p class="tagline">Add a BGG username for each person in your group — this pulls each public collection directly from BoardGameGeek and merges them into one shared, filterable shelf.</p>
 </header>
@@ -2104,14 +2104,14 @@ function showDebugError(msg){
     const candidateNames = SUGGESTION_CANDIDATE_NAMES.filter(n => !ownedNames.has(n.toLowerCase()));
     const resolvedIds = [];
     let resolvedCount = 0;
-    for (const name of candidateNames){
-      statusEl.textContent = `Resolving candidate games from BGG... (${resolvedCount}/${candidateNames.length})`;
+    await runPool(candidateNames, 6, async (name) => {
       try {
         const id = await resolveNameToId(name);
         if (id && !ownedIds.has(String(id)) && !resolvedIds.includes(id)) resolvedIds.push(id);
       } catch(e){ /* skip this candidate on failure */ }
       resolvedCount++;
-    }
+      statusEl.textContent = `Resolving candidate games from BGG... (${resolvedCount}/${candidateNames.length})`;
+    });
 
     if (!resolvedIds.length){
       overlay.querySelector('.modal-box').innerHTML = `
@@ -2178,6 +2178,12 @@ function showDebugError(msg){
       const sharedTags = [...(c.themes||[]), ...(c.mechanics||[])].filter(tag => profile[tag]);
       return { ...c, overlapScore, sharedTags: [...new Set(sharedTags)] };
     });
+
+    // require genuine overlap with your picks — otherwise a candidate with
+    // zero shared themes/mechanics would still show up sorted by raw BGG
+    // rank alone, which just surfaces whatever's currently trendy on BGG
+    // regardless of actual fit
+    scored = scored.filter(c => c.overlapScore > 0);
 
     if (constraints.playerCount != null){
       scored = scored.filter(c => c.min != null && c.max != null && c.min <= constraints.playerCount && c.max >= constraints.playerCount);
